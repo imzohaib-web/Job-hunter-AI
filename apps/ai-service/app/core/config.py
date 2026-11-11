@@ -22,20 +22,28 @@ class Settings(BaseSettings):
     ai_service_key: str = Field(min_length=1)
 
     groq_api_key: str = ""
-    groq_model: str = "llama-3.3-70b-versatile"
+    groq_model: str = "openai/gpt-oss-120b"
     gemini_api_key: str = ""
-    gemini_model: str = "gemini-2.0-flash"
+    gemini_model: str = "gemini-3.8-flash"
 
     embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
+    llm_provider_order: str = "groq,gemini"
+    llm_cache_enabled: bool = True
+    llm_cache_ttl_seconds: int = 3600
+    llm_max_concurrency: int = 10
     llm_max_retries: int = 2
     llm_timeout_seconds: int = 60
+
+    @property
+    def provider_order_list(self) -> list[str]:
+        return [p.strip().lower() for p in self.llm_provider_order.split(",") if p.strip()]
 
 
 def load_settings(*, env_file: str | None = ".env") -> Settings:
     try:
         if env_file is None:
-            return Settings(_env_file=None)  # type: ignore[call-arg]
-        return Settings(_env_file=env_file)  # type: ignore[call-arg]
+            return Settings(_env_file=None)
+        return Settings(_env_file=env_file)
     except ValidationError as exc:
         lines: list[str] = []
         for err in exc.errors():
