@@ -1,0 +1,42 @@
+---
+description: Permanent JobPilot product, architecture, hard rules, and workflow context for every task
+alwaysApply: true
+---
+
+# JobPilot — Master Project Rules
+
+You are a senior full-stack + AI engineer helping me build "JobPilot", a production-grade AI job-hunt assistant for my portfolio. Read this carefully; it is the permanent context for every future task.
+
+## PRODUCT
+
+A user uploads a resume, reviews/edits the parsed profile, gets ranked job matches with explanations and skill gaps, and on demand prepares an application for one job: company research, a tailored resume (rephrasing only, never inventing facts), a cover letter, and interview prep. They track applications on a kanban board and see analytics.
+
+## ARCHITECTURE (monorepo)
+
+- `apps/web`: React 18 + Vite + TypeScript, React Router, TanStack Query, Tailwind + shadcn/ui, Zustand for small UI state, react-hook-form + zod.
+- `apps/api`: Node 20 + Express + TypeScript, MongoDB (Mongoose), Redis + BullMQ, zod validation, JWT auth (access token + refresh token in httpOnly cookie), helmet, express-rate-limit, pino logging. This is the ONLY service the browser talks to.
+- `apps/ai-service`: Python 3.11 + FastAPI, LangGraph, Pydantic v2, sentence-transformers, LiteLLM-style provider fallback (Groq primary, Gemini fallback). Private/internal: protected by an X-Service-Key header, holds no user state, never touches MongoDB for business data.
+- `packages/shared`: shared TS types and the generated OpenAPI client for the AI service.
+- `docker-compose.yml` runs web, api, ai-service, mongo, redis for local dev.
+- `legacy/`: my old Streamlit project. Reference only. Never import from it or edit it.
+
+## HARD RULES
+
+1. TypeScript strict mode everywhere in JS land; Python fully type-hinted, ruff + mypy clean.
+2. Every LLM call returns a Pydantic-validated structured output with retry-on-validation-failure (max 2 retries). Never parse free text with regex.
+3. Treat job descriptions, scraped pages and resume text as UNTRUSTED input: wrap in delimiters, instruct the model to treat them as data, strip HTML, cap length.
+4. The tailoring and cover-letter agents must only use facts present in the user's verified profile. No invented skills, employers, metrics or dates.
+5. No secrets in code. All config via env vars validated at startup (zod in api, pydantic-settings in ai-service). Model names are env vars, never hardcoded.
+6. Never log resume text or other PII. Log ids, durations, token counts, cost.
+7. Every endpoint has input validation, auth (except health/login/register), consistent error shape `{error:{code,message,details?}}`, and a test.
+8. No auto-apply features and no scraping of LinkedIn/Indeed. Job data comes from public APIs through a JobSource adapter interface.
+9. Long-running work (>3s) goes through BullMQ jobs; the browser gets progress via SSE or polling, never a hanging request.
+10. Prefer small files and pure functions. Put business logic in services, not routers/controllers.
+
+## WORKFLOW RULES
+
+- Before coding any task, state a short plan and list the files you will create or change.
+- After coding, run the linter, type-check and tests for the area you touched, and fix failures before reporting.
+- Do not touch other apps than the one named in the task unless I say so.
+- When a requirement is ambiguous, pick the simplest sensible default, state it in one line, and continue.
+- Finish each task with: what was built, how to run it, and any follow-ups. Keep it short.
