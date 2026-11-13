@@ -11,6 +11,9 @@ target-version = "py311"
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
 
+[tool.ruff.lint.flake8-bugbear]
+extend-immutable-calls = ["fastapi.File", "fastapi.Depends", "fastapi.Query", "fastapi.Body"]
+
 [tool.mypy]
 python_version = "3.11"
 strict = true
@@ -24,6 +27,27 @@ plugins = ["pydantic.mypy"]
 init_forbid_extra = true
 init_typed = true
 warn_required_dynamic_aliases = true
+
+[[tool.mypy.overrides]]
+module = [
+    "pdfplumber",
+    "pdfplumber.*",
+    "pymupdf",
+    "pymupdf.*",
+    "fitz",
+    "fitz.*",
+    "docx",
+    "docx.*",
+    "pdf2image",
+    "pdf2image.*",
+    "pytesseract",
+    "pytesseract.*",
+    "PIL",
+    "PIL.*",
+]
+ignore_missing_imports = true
+disallow_untyped_calls = false
+disallow_untyped_defs = false
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -45,4 +45,3 @@ class UsageRecorder:
     @property
     def total_output_tokens(self) -> int:
         return sum(r.output_tokens for r in self._records)
-

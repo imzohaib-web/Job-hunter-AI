@@ -159,4 +159,3 @@ class GroqProvider(BaseLLMProvider):
                 retryable=True,
                 cause=exc,
             ) from exc
-

@@ -45,9 +45,7 @@ class LLMClient:
     ) -> None:
         settings = get_settings()
 
-        self.max_retries = (
-            max_retries if max_retries is not None else settings.llm_max_retries
-        )
+        self.max_retries = max_retries if max_retries is not None else settings.llm_max_retries
         self.timeout_seconds = (
             timeout_seconds if timeout_seconds is not None else float(settings.llm_timeout_seconds)
         )
@@ -66,9 +64,7 @@ class LLMClient:
                 ttl_seconds=settings.llm_cache_ttl_seconds,
             )
         )
-        self.usage_recorder = (
-            usage_recorder if usage_recorder is not None else UsageRecorder()
-        )
+        self.usage_recorder = usage_recorder if usage_recorder is not None else UsageRecorder()
 
         self._providers: dict[str, BaseLLMProvider] = (
             providers if providers is not None else self._build_default_providers(settings)
@@ -161,9 +157,7 @@ class LLMClient:
                     )
                     continue
 
-                history: list[dict[str, str]] = [
-                    {"role": "user", "content": rendered_prompt}
-                ]
+                history: list[dict[str, str]] = [{"role": "user", "content": rendered_prompt}]
                 validation_retries = 0
                 provider_retries = 0
                 total_input_tokens = 0

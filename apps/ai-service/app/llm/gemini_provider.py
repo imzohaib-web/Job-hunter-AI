@@ -131,4 +131,3 @@ class GeminiProvider(BaseLLMProvider):
                 retryable=True,
                 cause=exc,
             ) from exc
-

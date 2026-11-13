@@ -41,4 +41,3 @@ def wrap_untrusted(label: str, text: str, max_chars: int = 4000) -> str:
     clean_label = re.sub(r"[^A-Za-z0-9_]", "_", label.strip()).upper() or "DATA"
 
     return f"<<<UNTRUSTED_{clean_label}>>>\n{cleaned}\n<<<END_UNTRUSTED_{clean_label}>>>"
-
