@@ -1,0 +1,47 @@
+{
+  "results": [
+    {
+      "id": "adzuna-301",
+      "title": "Senior AI Infrastructure Engineer",
+      "company": {
+        "display_name": "Apex Compute Inc."
+      },
+      "location": {
+        "display_name": "San Francisco, CA",
+        "area": ["US", "California", "San Francisco"]
+      },
+      "description": "Apex Compute is seeking a Senior AI Infrastructure Engineer with deep PyTorch, Docker, and Kubernetes expertise.",
+      "redirect_url": "https://www.adzuna.com/land/ad/301",
+      "salary_min": 160000.0,
+      "salary_max": 210000.0,
+      "created": "2026-11-03T12:00:00Z",
+      "category": {
+        "label": "IT Jobs",
+        "tag": "it-jobs"
+      }
+    },
+    {
+      "id": "adzuna-302",
+      "title": "Junior Data Analyst",
+      "company": {
+        "display_name": "MetricCorp"
+      },
+      "location": {
+        "display_name": "New York, NY",
+        "area": ["US", "New York", "New York"]
+      },
+      "description": "Entry level data analyst proficient with SQL, Python, and Pandas.",
+      "redirect_url": "https://www.adzuna.com/land/ad/302",
+      "salary_min": 75000.0,
+      "salary_max": 90000.0,
+      "created": "2026-11-03T15:00:00Z",
+      "category": {
+        "label": "IT Jobs",
+        "tag": "it-jobs"
+      }
+    }
+  ],
+  "count": 2,
+  "mean": 133750.0
+}
+

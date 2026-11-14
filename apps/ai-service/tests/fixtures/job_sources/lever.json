@@ -1,0 +1,44 @@
+[
+  {
+    "id": "lever-501",
+    "text": "Senior Machine Learning Engineer",
+    "createdAt": 1730764800000,
+    "hostedUrl": "https://jobs.lever.co/netflix/lever-501",
+    "applyUrl": "https://jobs.lever.co/netflix/lever-501/apply",
+    "categories": {
+      "commitment": "Full time",
+      "department": "Engineering",
+      "location": "Los Gatos, CA",
+      "team": "Machine Learning"
+    },
+    "workplaceType": "remote",
+    "description": "<div>Join Netflix to advance recommendation systems at planet scale.</div>",
+    "lists": [
+      {
+        "text": "What you will do",
+        "content": "<ul><li>Train large models with PyTorch and Ray</li><li>Deploy real-time inference with FastAPI</li></ul>"
+      },
+      {
+        "text": "Requirements",
+        "content": "<ul><li>Python, PyTorch, Docker, Kubernetes, Spark</li></ul>"
+      }
+    ]
+  },
+  {
+    "id": "lever-502",
+    "text": "DevOps Engineer",
+    "createdAt": 1730851200000,
+    "hostedUrl": "https://jobs.lever.co/netflix/lever-502",
+    "applyUrl": "https://jobs.lever.co/netflix/lever-502/apply",
+    "categories": {
+      "commitment": "Full time",
+      "department": "Infrastructure",
+      "location": "Los Gatos, CA",
+      "team": "Core Platform"
+    },
+    "workplaceType": "hybrid",
+    "description": "<p>DevOps engineer supporting cloud deployments on AWS using Terraform and CI/CD pipelines.</p>",
+    "lists": []
+  }
+]
+

@@ -1,0 +1,40 @@
+{
+  "data": [
+    {
+      "slug": "arbeit-python-backend-lead-201",
+      "company_name": "Berlin AI Labs GmbH",
+      "title": "Python Backend Tech Lead",
+      "description": "<p>Berlin AI Labs is looking for a Tech Lead to drive our Python microservices architecture.</p><ul><li>Strong proficiency with Python, PostgreSQL, and Kubernetes.</li><li>Experience mentoring junior developers.</li></ul>",
+      "remote": true,
+      "url": "https://www.arbeitnow.com/jobs/companies/berlin-ai-labs/python-backend-lead-201",
+      "tags": ["Python", "PostgreSQL", "Kubernetes", "Docker"],
+      "job_types": ["Full Time"],
+      "location": "Berlin",
+      "created_at": 1730419200
+    },
+    {
+      "slug": "arbeit-frontend-engineer-202",
+      "company_name": "Nordic Soft AG",
+      "title": "Senior Frontend Engineer",
+      "description": "<div>We are building next-gen UX using React, Next.js, and Tailwind CSS.</div>",
+      "remote": false,
+      "url": "https://www.arbeitnow.com/jobs/companies/nordic-soft/frontend-engineer-202",
+      "tags": ["React", "Next.js", "CSS"],
+      "job_types": ["Full Time"],
+      "location": "Munich, Germany",
+      "created_at": 1730505600
+    }
+  ],
+  "links": {
+    "next": null
+  },
+  "meta": {
+    "current_page": 1,
+    "from": 1,
+    "path": "https://www.arbeitnow.com/api/job-board-api",
+    "per_page": 100,
+    "to": 2,
+    "total": 2
+  }
+}
+

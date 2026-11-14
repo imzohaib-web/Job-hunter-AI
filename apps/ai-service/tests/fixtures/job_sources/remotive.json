@@ -1,0 +1,35 @@
+{
+  "0-legal-notice": "Remotive API is free for personal use",
+  "job-count": 2,
+  "jobs": [
+    {
+      "id": 101,
+      "url": "https://remotive.com/remote-jobs/software-dev/senior-python-engineer-101",
+      "title": "Senior Python Engineer",
+      "company_name": "CloudNova Systems",
+      "company_logo": "https://remotive.com/logo1.png",
+      "category": "Software Development",
+      "tags": ["python", "fastapi", "docker", "aws"],
+      "job_type": "full_time",
+      "publication_date": "2026-11-01T10:00:00",
+      "candidate_required_location": "USA Only",
+      "salary": "$140,000 - $180,000",
+      "description": "<p>We are seeking a <strong>Senior Python Engineer</strong> to scale our distributed backend.</p><p>Key skills include Python, FastAPI, Docker, and AWS.</p>"
+    },
+    {
+      "id": 102,
+      "url": "https://remotive.com/remote-jobs/software-dev/full-stack-developer-102",
+      "title": "Full Stack Developer (Remote)",
+      "company_name": "WebSphere LLC",
+      "company_logo": "https://remotive.com/logo2.png",
+      "category": "Software Development",
+      "tags": ["react", "typescript", "node.js"],
+      "job_type": "full_time",
+      "publication_date": "2026-11-02T14:30:00",
+      "candidate_required_location": "Worldwide",
+      "salary": "$110k - $140k",
+      "description": "<p>Join our team as a Full Stack Developer building modern web apps with React and TypeScript.</p>"
+    }
+  ]
+}
+

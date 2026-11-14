@@ -1,0 +1,39 @@
+{
+  "status": "OK",
+  "request_id": "req-jsearch-123",
+  "data": [
+    {
+      "job_id": "jsearch-601",
+      "job_title": "Full Stack AI Engineer",
+      "employer_name": "Synthetix AI Corp",
+      "job_city": "Austin",
+      "job_state": "TX",
+      "job_country": "US",
+      "job_is_remote": true,
+      "job_description": "Exciting role building generative AI user experiences with React, TypeScript, Python, and LangGraph.",
+      "job_apply_link": "https://careers.synthetix.ai/job/601",
+      "job_min_salary": 150000.0,
+      "job_max_salary": 190000.0,
+      "job_salary_currency": "USD",
+      "job_posted_at_timestamp": 1730937600,
+      "job_required_skills": ["Python", "TypeScript", "React", "LangGraph"]
+    },
+    {
+      "job_id": "jsearch-602",
+      "job_title": "Lead Cloud Architect",
+      "employer_name": "CloudSphere",
+      "job_city": "Seattle",
+      "job_state": "WA",
+      "job_country": "US",
+      "job_is_remote": false,
+      "job_description": "Lead architect overseeing multi-cloud migrations using AWS, Azure, and Terraform.",
+      "job_apply_link": "https://cloudsphere.io/jobs/602",
+      "job_min_salary": 180000.0,
+      "job_max_salary": 230000.0,
+      "job_salary_currency": "USD",
+      "job_posted_at_timestamp": 1731024000,
+      "job_required_skills": ["AWS", "Azure", "Terraform", "Kubernetes"]
+    }
+  ]
+}
+
