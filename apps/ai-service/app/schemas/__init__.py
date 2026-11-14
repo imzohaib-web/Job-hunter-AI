@@ -11,6 +11,7 @@ from app.schemas.envelopes import (
     CheckFabricationResponse,
     CompanyResearchRequest,
     CompanyResearchResponse,
+    ExportResumeDocxRequest,
     GenerateCoverLetterRequest,
     GenerateCoverLetterResponse,
     GenerateInterviewPackRequest,
@@ -19,6 +20,8 @@ from app.schemas.envelopes import (
     MatchJobResponse,
     ParseResumeRequest,
     ParseResumeResponse,
+    RankResponse,
+    SearchJobsResponse,
     TailorResumeRequest,
     TailorResumeResponse,
 )
@@ -32,8 +35,17 @@ from app.schemas.interview import (
     StarAnswer,
     TechnicalQuestion,
 )
-from app.schemas.job import JobPosting
-from app.schemas.match import MatchResult, MatchScoreBreakdown
+from app.schemas.job import JobPosting, JobQuery, SearchJobsResult, SourceStatus
+from app.schemas.match import (
+    CandidatePreferences,
+    JobWithEmbedding,
+    MatchResult,
+    MatchScoreBreakdown,
+    RankedJobItem,
+    RankingWeights,
+    RankRequest,
+    RankResponseData,
+)
 from app.schemas.profile import (
     Certification,
     Education,
@@ -46,6 +58,7 @@ from app.schemas.profile import (
 from app.schemas.tailoring import (
     AtsReport,
     AtsSectionCheck,
+    KeywordPlanItem,
     ResumeChange,
     TailoredResume,
 )
@@ -58,6 +71,7 @@ __all__ = [
     "BatchMatchRequest",
     "BatchMatchResponse",
     "BehavioralQuestion",
+    "CandidatePreferences",
     "Certification",
     "CheckFabricationRequest",
     "CheckFabricationResponse",
@@ -66,6 +80,7 @@ __all__ = [
     "CompanyResearchResponse",
     "CoverLetter",
     "Education",
+    "ExportResumeDocxRequest",
     "FabricationReport",
     "GenerateCoverLetterRequest",
     "GenerateCoverLetterResponse",
@@ -74,6 +89,9 @@ __all__ = [
     "HealthResponse",
     "InterviewPack",
     "JobPosting",
+    "JobQuery",
+    "JobWithEmbedding",
+    "KeywordPlanItem",
     "LanguageProficiency",
     "MatchJobRequest",
     "MatchJobResponse",
@@ -85,8 +103,16 @@ __all__ = [
     "ProfileSkill",
     "Project",
     "QuestionToAsk",
+    "RankRequest",
+    "RankResponse",
+    "RankResponseData",
+    "RankedJobItem",
+    "RankingWeights",
     "ResumeChange",
     "RoleSpecificQuestion",
+    "SearchJobsResponse",
+    "SearchJobsResult",
+    "SourceStatus",
     "StarAnswer",
     "TailorResumeRequest",
     "TailorResumeResponse",

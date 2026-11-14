@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import logging
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
 from typing import Any
 
 from fastapi import FastAPI, HTTPException, Request
@@ -11,6 +14,19 @@ from app.api.middleware import ServiceKeyMiddleware
 from app.core.config import get_settings
 from app.services.file_validator import FileValidationError
 
+logger = logging.getLogger("jobpilot.main")
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
+    try:
+        from app.embeddings.model import get_embedding_model
+
+        get_embedding_model()
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Could not preload embedding model at startup: %s", exc)
+    yield
+
 
 def create_app() -> FastAPI:
     settings = get_settings()
@@ -18,6 +34,7 @@ def create_app() -> FastAPI:
         title="JobPilot AI Service",
         version="0.1.0",
         docs_url="/docs" if settings.app_env != "production" else None,
+        lifespan=lifespan,
     )
     app.add_middleware(ServiceKeyMiddleware, settings=settings)
 
@@ -36,9 +53,7 @@ def create_app() -> FastAPI:
         )
 
     @app.exception_handler(HTTPException)
-    async def http_exception_handler(
-        _request: Request, exc: HTTPException
-    ) -> JSONResponse:
+    async def http_exception_handler(_request: Request, exc: HTTPException) -> JSONResponse:
         if isinstance(exc.detail, dict) and "code" in exc.detail:
             code = str(exc.detail.get("code", "HTTP_ERROR"))
             message = str(exc.detail.get("message", "HTTP error occurred"))

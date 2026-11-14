@@ -149,6 +149,211 @@
         }
       }
     },
+    "/api/v1/search-jobs": {
+      "post": {
+        "tags": [
+          "AI Operations"
+        ],
+        "summary": "Search, aggregate, and deduplicate job opportunities across enabled public adapters",
+        "operationId": "search_jobs_api_v1_search_jobs_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JobQuery"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchJobsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/jobs/search": {
+      "post": {
+        "tags": [
+          "AI Operations"
+        ],
+        "summary": "Search, aggregate, and deduplicate job opportunities across enabled public adapters",
+        "operationId": "search_jobs_api_v1_jobs_search_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JobQuery"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchJobsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/search-jobs": {
+      "post": {
+        "tags": [
+          "AI Operations"
+        ],
+        "summary": "Search, aggregate, and deduplicate job opportunities across enabled public adapters",
+        "operationId": "search_jobs_v1_search_jobs_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JobQuery"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchJobsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/jobs/rank": {
+      "post": {
+        "tags": [
+          "AI Operations"
+        ],
+        "summary": "Hybrid multi-stage ranking of job opportunities against candidate profile",
+        "operationId": "rank_jobs_api_v1_jobs_rank_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RankRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RankResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/rank": {
+      "post": {
+        "tags": [
+          "AI Operations"
+        ],
+        "summary": "Hybrid multi-stage ranking of job opportunities against candidate profile",
+        "operationId": "rank_jobs_v1_rank_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RankRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RankResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/jobs/match": {
       "post": {
         "tags": [
@@ -277,8 +482,49 @@
         "tags": [
           "AI Operations"
         ],
-        "summary": "Tailor candidate resume specifically for target job posting",
+        "summary": "Defensively tailor candidate resume specifically for target job posting",
         "operationId": "tailor_resume_api_v1_resume_tailor_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TailorResumeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TailorResumeResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/tailor-resume": {
+      "post": {
+        "tags": [
+          "AI Operations"
+        ],
+        "summary": "Defensively tailor candidate resume specifically for target job posting",
+        "operationId": "tailor_resume_v1_tailor_resume_post",
         "requestBody": {
           "content": {
             "application/json": {
@@ -338,6 +584,125 @@
                 "schema": {
                   "$ref": "#/components/schemas/CheckFabricationResponse"
                 }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/check-fabrication": {
+      "post": {
+        "tags": [
+          "AI Operations"
+        ],
+        "summary": "Audit tailored resume or cover letter against candidate profile",
+        "operationId": "check_fabrication_v1_check_fabrication_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CheckFabricationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckFabricationResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/resume/export-docx": {
+      "post": {
+        "tags": [
+          "AI Operations"
+        ],
+        "summary": "Export verified resume into single-column ATS-friendly DOCX",
+        "operationId": "export_resume_docx_api_v1_resume_export_docx_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExportResumeDocxRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/export-resume-docx": {
+      "post": {
+        "tags": [
+          "AI Operations"
+        ],
+        "summary": "Export verified resume into single-column ATS-friendly DOCX",
+        "operationId": "export_resume_docx_v1_export_resume_docx_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExportResumeDocxRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
               }
             }
           },
@@ -503,6 +868,36 @@
             "type": "array",
             "title": "Section Checks",
             "description": "Per-section diagnostic audit findings"
+          },
+          "length_check": {
+            "type": "string",
+            "title": "Length Check",
+            "description": "Length and word count assessment for ATS parsing",
+            "default": "Optimal: 1-2 pages",
+            "examples": [
+              "Optimal: 1-2 pages (520 words)"
+            ]
+          },
+          "word_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Word Count",
+            "description": "Total words in candidate resume body",
+            "default": 0,
+            "examples": [
+              520
+            ]
+          },
+          "formatting_warnings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Formatting Warnings",
+            "description": "ATS layout warnings (tables, images, columns, etc.)",
+            "examples": [
+              "Single-column ATS layout verified: no multi-column tables or embedded images used."
+            ]
           }
         },
         "type": "object",
@@ -678,6 +1073,89 @@
           "file"
         ],
         "title": "Body_parse_resume_v1_parse_resume_post"
+      },
+      "CandidatePreferences": {
+        "properties": {
+          "location": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location",
+            "description": "Preferred geographic location or country",
+            "examples": [
+              "San Francisco, CA"
+            ]
+          },
+          "remote_only": {
+            "type": "boolean",
+            "title": "Remote Only",
+            "description": "Strictly require fully remote roles",
+            "default": false,
+            "examples": [
+              true
+            ]
+          },
+          "excluded_companies": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Excluded Companies",
+            "description": "Companies the candidate wishes to exclude",
+            "examples": [
+              [
+                "Acme Corp"
+              ]
+            ]
+          },
+          "excluded_keywords": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Excluded Keywords",
+            "description": "Keywords to exclude from job titles or descriptions",
+            "examples": [
+              [
+                "crypto",
+                "gambling"
+              ]
+            ]
+          },
+          "work_authorization": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Work Authorization",
+            "description": "Work authorization status (e.g., 'US Citizen', 'Needs Sponsorship')",
+            "examples": [
+              "Needs Sponsorship"
+            ]
+          },
+          "experience_gap_tolerance_years": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Experience Gap Tolerance Years",
+            "description": "Tolerated gap in years between candidate experience and role requirement",
+            "default": 2.0,
+            "examples": [
+              2.0
+            ]
+          }
+        },
+        "type": "object",
+        "title": "CandidatePreferences",
+        "description": "Candidate constraints and preferences for deterministic hard filtering."
       },
       "Certification": {
         "properties": {
@@ -1100,6 +1578,32 @@
         ],
         "title": "Education"
       },
+      "ExportResumeDocxRequest": {
+        "properties": {
+          "resume": {
+            "$ref": "#/components/schemas/ParsedProfile",
+            "description": "Approved candidate profile / resume sections"
+          },
+          "target_job_title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Job Title",
+            "description": "Optional target job title for document naming"
+          }
+        },
+        "type": "object",
+        "required": [
+          "resume"
+        ],
+        "title": "ExportResumeDocxRequest",
+        "description": "Request payload for exporting verified resume to ATS-friendly DOCX format."
+      },
       "FabricationReport": {
         "properties": {
           "claims_checked": {
@@ -1504,6 +2008,15 @@
             "examples": [
               "senior"
             ]
+          },
+          "is_demo": {
+            "type": "boolean",
+            "title": "Is Demo",
+            "description": "Flag indicating synthetic/demo data (only when USE_DEMO_JOBS is enabled)",
+            "default": false,
+            "examples": [
+              false
+            ]
           }
         },
         "type": "object",
@@ -1523,6 +2036,7 @@
           "currency": "USD",
           "description": "We are seeking a Senior AI Platform Engineer...",
           "external_id": "adzuna-job-98421",
+          "is_demo": false,
           "location": "San Francisco, CA",
           "posted_at": "2026-11-01T12:00:00Z",
           "remote": true,
@@ -1538,6 +2052,193 @@
           "title": "Senior AI Platform Engineer",
           "url": "https://jobs.example.com/posting/98421"
         }
+      },
+      "JobQuery": {
+        "properties": {
+          "keywords": {
+            "type": "string",
+            "title": "Keywords",
+            "description": "Search keywords (role title, domain, or technology)",
+            "default": "",
+            "examples": [
+              "Full Stack Engineer"
+            ]
+          },
+          "location": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location",
+            "description": "Target location filter",
+            "examples": [
+              "San Francisco, CA"
+            ]
+          },
+          "remote_only": {
+            "type": "boolean",
+            "title": "Remote Only",
+            "description": "Filter exclusively for remote opportunities",
+            "default": false,
+            "examples": [
+              true
+            ]
+          },
+          "seniority": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seniority",
+            "description": "Desired seniority level (entry, junior, mid, senior, lead, staff)",
+            "examples": [
+              "senior"
+            ]
+          },
+          "limit": {
+            "type": "integer",
+            "maximum": 200.0,
+            "minimum": 1.0,
+            "title": "Limit",
+            "description": "Maximum merged postings to return",
+            "default": 50,
+            "examples": [
+              20
+            ]
+          },
+          "sources": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Sources",
+            "description": "List of specific sources to query (empty queries all active sources)",
+            "examples": [
+              [
+                "remotive",
+                "arbeitnow"
+              ]
+            ]
+          },
+          "company_slugs": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Company Slugs",
+            "description": "Target company slugs for ATS boards (Greenhouse / Lever)",
+            "examples": [
+              [
+                "airbnb",
+                "stripe"
+              ]
+            ]
+          },
+          "greenhouse_boards": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Greenhouse Boards",
+            "description": "Specific Greenhouse company board slugs to query"
+          },
+          "lever_boards": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Lever Boards",
+            "description": "Specific Lever company board slugs to query"
+          }
+        },
+        "type": "object",
+        "title": "JobQuery",
+        "description": "Query parameters for searching jobs across sources."
+      },
+      "JobWithEmbedding": {
+        "properties": {
+          "job": {
+            "$ref": "#/components/schemas/JobPosting",
+            "description": "Normalized job posting"
+          },
+          "embedding": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Embedding",
+            "description": "Cached 384-dim vector embedding from MongoDB Atlas or client"
+          }
+        },
+        "type": "object",
+        "required": [
+          "job"
+        ],
+        "title": "JobWithEmbedding",
+        "description": "Job posting optionally accompanied by pre-computed embedding."
+      },
+      "KeywordPlanItem": {
+        "properties": {
+          "keyword": {
+            "type": "string",
+            "title": "Keyword",
+            "description": "Target keyword or technology required by the job"
+          },
+          "category": {
+            "type": "string",
+            "title": "Category",
+            "description": "Priority category ('required' or 'preferred')",
+            "default": "required",
+            "examples": [
+              "required"
+            ]
+          },
+          "evidence": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evidence",
+            "description": "Pointer or excerpt of verified profile evidence, or None if gap",
+            "examples": [
+              "profile.experience[0].bullets[0]"
+            ]
+          },
+          "is_gap": {
+            "type": "boolean",
+            "title": "Is Gap",
+            "description": "True if keyword is missing from candidate source profile",
+            "default": false,
+            "examples": [
+              false
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "keyword"
+        ],
+        "title": "KeywordPlanItem",
+        "description": "Extracted job keyword mapped to candidate evidence or identified gap."
       },
       "LanguageProficiency": {
         "properties": {
@@ -1691,6 +2392,54 @@
             "examples": [
               null
             ]
+          },
+          "strengths": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Strengths",
+            "description": "Key strengths matching the candidate to this position"
+          },
+          "gaps": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Gaps",
+            "description": "Identified candidate qualification gaps or missing criteria"
+          },
+          "suggestion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Suggestion",
+            "description": "Short actionable recommendation for the candidate application"
+          },
+          "score_adjustment": {
+            "type": "integer",
+            "maximum": 8.0,
+            "minimum": -8.0,
+            "title": "Score Adjustment",
+            "description": "LLM score adjustment bounded within [-8, +8] points",
+            "default": 0
+          },
+          "adjustment_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Adjustment Reason",
+            "description": "Justification for LLM score adjustment"
           }
         },
         "type": "object",
@@ -2145,6 +2894,189 @@
         "title": "QuestionToAsk",
         "description": "Strategic reverse-interview question for the candidate to ask interviewers."
       },
+      "RankRequest": {
+        "properties": {
+          "profile": {
+            "$ref": "#/components/schemas/ParsedProfile",
+            "description": "Candidate profile"
+          },
+          "jobs": {
+            "items": {
+              "$ref": "#/components/schemas/JobWithEmbedding"
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Jobs",
+            "description": "Job postings to evaluate, optionally with cached embeddings"
+          },
+          "preferences": {
+            "$ref": "#/components/schemas/CandidatePreferences",
+            "description": "Candidate constraints and hard filter rules"
+          },
+          "llm_rerank": {
+            "type": "boolean",
+            "title": "Llm Rerank",
+            "description": "Enable LLM reranking and explanation for top 15 candidates",
+            "default": true
+          },
+          "weights": {
+            "$ref": "#/components/schemas/RankingWeights",
+            "description": "Documented stage 4 weights"
+          }
+        },
+        "type": "object",
+        "required": [
+          "profile",
+          "jobs"
+        ],
+        "title": "RankRequest",
+        "description": "Request payload for hybrid job ranking against a parsed profile."
+      },
+      "RankResponse": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/RankResponseData",
+            "description": "Payload data"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Warnings",
+            "description": "Processing warnings and notices"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/ApiMeta",
+            "description": "Execution metadata and timing"
+          }
+        },
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "title": "RankResponse",
+        "description": "Response containing hybrid ranked job opportunities with score breakdowns."
+      },
+      "RankResponseData": {
+        "properties": {
+          "ranked_jobs": {
+            "items": {
+              "$ref": "#/components/schemas/RankedJobItem"
+            },
+            "type": "array",
+            "title": "Ranked Jobs",
+            "description": "Ranked jobs (top matches first; hard filter failures at the end)"
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total",
+            "description": "Total number of evaluated jobs"
+          },
+          "unfiltered_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Unfiltered Count",
+            "description": "Count of jobs successfully passing hard filters"
+          },
+          "hard_filtered_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Hard Filtered Count",
+            "description": "Count of jobs failing hard filters"
+          },
+          "new_embeddings_generated": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "New Embeddings Generated",
+            "description": "Number of newly computed vector embeddings"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ranked_jobs",
+          "total",
+          "unfiltered_count",
+          "hard_filtered_count",
+          "new_embeddings_generated"
+        ],
+        "title": "RankResponseData",
+        "description": "Output data containing ordered job matches and telemetry."
+      },
+      "RankedJobItem": {
+        "properties": {
+          "job": {
+            "$ref": "#/components/schemas/JobPosting",
+            "description": "Job posting details"
+          },
+          "match": {
+            "$ref": "#/components/schemas/MatchResult",
+            "description": "Match evaluation score and breakdown"
+          },
+          "embedding": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Embedding",
+            "description": "Embedding vector (returned for persistence in MongoDB Atlas)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "job",
+          "match"
+        ],
+        "title": "RankedJobItem",
+        "description": "Evaluated job entry with match analysis and vector embedding."
+      },
+      "RankingWeights": {
+        "properties": {
+          "semantic": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Semantic",
+            "description": "Weight for dense embedding similarity",
+            "default": 0.35
+          },
+          "keyword": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Keyword",
+            "description": "Weight for BM25 lexical keyword score",
+            "default": 0.2
+          },
+          "skills": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Skills",
+            "description": "Weight for skill overlap score",
+            "default": 0.3
+          },
+          "experience": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Experience",
+            "description": "Weight for seniority and experience gap score",
+            "default": 0.15
+          }
+        },
+        "type": "object",
+        "title": "RankingWeights",
+        "description": "Configurable scoring weights summing to 1.0."
+      },
       "ResumeChange": {
         "properties": {
           "section": {
@@ -2235,6 +3167,126 @@
         "title": "RoleSpecificQuestion",
         "description": "Domain and role-specific question addressing the hiring team's unique domain."
       },
+      "SearchJobsResponse": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/SearchJobsResult",
+            "description": "Payload data"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Warnings",
+            "description": "Processing warnings and notices"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/ApiMeta",
+            "description": "Execution metadata and timing"
+          }
+        },
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "title": "SearchJobsResponse",
+        "description": "Response containing aggregated and deduped job listings with source telemetry."
+      },
+      "SearchJobsResult": {
+        "properties": {
+          "jobs": {
+            "items": {
+              "$ref": "#/components/schemas/JobPosting"
+            },
+            "type": "array",
+            "title": "Jobs",
+            "description": "Merged, filtered, and deduplicated job postings"
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total",
+            "description": "Count of deduplicated jobs returned in payload",
+            "default": 0
+          },
+          "sources_responded": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Sources Responded",
+            "description": "Number of queried sources that returned successfully",
+            "default": 0
+          },
+          "sources_total": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Sources Total",
+            "description": "Total number of sources queried in this execution",
+            "default": 0
+          },
+          "source_statuses": {
+            "items": {
+              "$ref": "#/components/schemas/SourceStatus"
+            },
+            "type": "array",
+            "title": "Source Statuses",
+            "description": "Detailed per-source execution outcome"
+          }
+        },
+        "type": "object",
+        "title": "SearchJobsResult",
+        "description": "Aggregated and deduped job search results with per-source telemetry."
+      },
+      "SourceStatus": {
+        "properties": {
+          "source": {
+            "type": "string",
+            "title": "Source",
+            "description": "Name/identifier of the job source"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "description": "Query outcome: 'ok', 'error', or 'skipped'",
+            "examples": [
+              "ok"
+            ]
+          },
+          "count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Count",
+            "description": "Number of raw job postings returned from this source",
+            "default": 0
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error",
+            "description": "Error detail message if the source failed"
+          },
+          "duration_ms": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Duration Ms",
+            "description": "Execution duration in milliseconds",
+            "default": 0.0
+          }
+        },
+        "type": "object",
+        "required": [
+          "source",
+          "status"
+        ],
+        "title": "SourceStatus",
+        "description": "Status metadata for an individual job source queried."
+      },
       "StarAnswer": {
         "properties": {
           "situation": {
@@ -2289,6 +3341,17 @@
           "job": {
             "$ref": "#/components/schemas/JobPosting",
             "description": "Target job posting"
+          },
+          "company_insight": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CompanyInsight"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional company research insight"
           }
         },
         "type": "object",
@@ -2339,9 +3402,21 @@
             "title": "Changes",
             "description": "Itemized list of all rephrased bullets and text changes"
           },
+          "keyword_plan": {
+            "items": {
+              "$ref": "#/components/schemas/KeywordPlanItem"
+            },
+            "type": "array",
+            "title": "Keyword Plan",
+            "description": "Audit mapping of job keywords to verified evidence or reported gaps"
+          },
           "ats_report": {
             "$ref": "#/components/schemas/AtsReport",
             "description": "ATS optimization analysis and keyword matching metrics"
+          },
+          "fabrication_report": {
+            "$ref": "#/components/schemas/FabricationReport",
+            "description": "Independent fabrication and truthfulness audit report"
           }
         },
         "type": "object",

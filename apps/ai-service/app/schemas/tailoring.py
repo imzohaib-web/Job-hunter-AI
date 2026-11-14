@@ -2,7 +2,29 @@ from __future__ import annotations
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from app.schemas.fabrication import FabricationReport
 from app.schemas.profile import ParsedProfile
+
+
+class KeywordPlanItem(BaseModel):
+    """Extracted job keyword mapped to candidate evidence or identified gap."""
+
+    keyword: str = Field(description="Target keyword or technology required by the job")
+    category: str = Field(
+        default="required",
+        description="Priority category ('required' or 'preferred')",
+        examples=["required"],
+    )
+    evidence: str | None = Field(
+        default=None,
+        description="Pointer or excerpt of verified profile evidence, or None if gap",
+        examples=["profile.experience[0].bullets[0]"],
+    )
+    is_gap: bool = Field(
+        default=False,
+        description="True if keyword is missing from candidate source profile",
+        examples=[False],
+    )
 
 
 class ResumeChange(BaseModel):
@@ -80,6 +102,24 @@ class AtsReport(BaseModel):
         default_factory=list,
         description="Per-section diagnostic audit findings",
     )
+    length_check: str = Field(
+        default="Optimal: 1-2 pages",
+        description="Length and word count assessment for ATS parsing",
+        examples=["Optimal: 1-2 pages (520 words)"],
+    )
+    word_count: int = Field(
+        default=0,
+        ge=0,
+        description="Total words in candidate resume body",
+        examples=[520],
+    )
+    formatting_warnings: list[str] = Field(
+        default_factory=list,
+        description="ATS layout warnings (tables, images, columns, etc.)",
+        examples=[
+            "Single-column ATS layout verified: no multi-column tables or embedded images used."
+        ],
+    )
 
 
 class TailoredResume(BaseModel):
@@ -92,8 +132,20 @@ class TailoredResume(BaseModel):
         default_factory=list,
         description="Itemized list of all rephrased bullets and text changes",
     )
+    keyword_plan: list[KeywordPlanItem] = Field(
+        default_factory=list,
+        description="Audit mapping of job keywords to verified evidence or reported gaps",
+    )
     ats_report: AtsReport = Field(
         description="ATS optimization analysis and keyword matching metrics",
+    )
+    fabrication_report: FabricationReport = Field(
+        default_factory=lambda: FabricationReport(
+            claims_checked=0,
+            unsupported_claims=[],
+            passed=True,
+        ),
+        description="Independent fabrication and truthfulness audit report",
     )
 
     model_config = ConfigDict(

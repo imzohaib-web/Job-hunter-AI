@@ -72,6 +72,91 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/search-jobs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Search, aggregate, and deduplicate job opportunities across enabled public adapters */
+        post: operations["search_jobs_api_v1_search_jobs_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/jobs/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Search, aggregate, and deduplicate job opportunities across enabled public adapters */
+        post: operations["search_jobs_api_v1_jobs_search_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/search-jobs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Search, aggregate, and deduplicate job opportunities across enabled public adapters */
+        post: operations["search_jobs_v1_search_jobs_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/jobs/rank": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Hybrid multi-stage ranking of job opportunities against candidate profile */
+        post: operations["rank_jobs_api_v1_jobs_rank_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/rank": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Hybrid multi-stage ranking of job opportunities against candidate profile */
+        post: operations["rank_jobs_v1_rank_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/jobs/match": {
         parameters: {
             query?: never;
@@ -132,8 +217,25 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Tailor candidate resume specifically for target job posting */
+        /** Defensively tailor candidate resume specifically for target job posting */
         post: operations["tailor_resume_api_v1_resume_tailor_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tailor-resume": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Defensively tailor candidate resume specifically for target job posting */
+        post: operations["tailor_resume_v1_tailor_resume_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -151,6 +253,57 @@ export interface paths {
         put?: never;
         /** Audit tailored resume or cover letter against candidate profile */
         post: operations["check_fabrication_api_v1_resume_check_fabrication_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/check-fabrication": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Audit tailored resume or cover letter against candidate profile */
+        post: operations["check_fabrication_v1_check_fabrication_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/resume/export-docx": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Export verified resume into single-column ATS-friendly DOCX */
+        post: operations["export_resume_docx_api_v1_resume_export_docx_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/export-resume-docx": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Export verified resume into single-column ATS-friendly DOCX */
+        post: operations["export_resume_docx_v1_export_resume_docx_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -243,6 +396,26 @@ export interface components {
              * @description Per-section diagnostic audit findings
              */
             section_checks?: components["schemas"]["AtsSectionCheck"][];
+            /**
+             * Length Check
+             * @description Length and word count assessment for ATS parsing
+             * @default Optimal: 1-2 pages
+             * @example Optimal: 1-2 pages (520 words)
+             */
+            length_check: string;
+            /**
+             * Word Count
+             * @description Total words in candidate resume body
+             * @default 0
+             * @example 520
+             */
+            word_count: number;
+            /**
+             * Formatting Warnings
+             * @description ATS layout warnings (tables, images, columns, etc.)
+             * @example Single-column ATS layout verified: no multi-column tables or embedded images used.
+             */
+            formatting_warnings?: string[];
         };
         /**
          * AtsSectionCheck
@@ -345,6 +518,55 @@ export interface components {
              * @description Resume file in PDF or DOCX format (<= 5 MB)
              */
             file: string;
+        };
+        /**
+         * CandidatePreferences
+         * @description Candidate constraints and preferences for deterministic hard filtering.
+         */
+        CandidatePreferences: {
+            /**
+             * Location
+             * @description Preferred geographic location or country
+             * @example San Francisco, CA
+             */
+            location?: string | null;
+            /**
+             * Remote Only
+             * @description Strictly require fully remote roles
+             * @default false
+             * @example true
+             */
+            remote_only: boolean;
+            /**
+             * Excluded Companies
+             * @description Companies the candidate wishes to exclude
+             * @example [
+             *       "Acme Corp"
+             *     ]
+             */
+            excluded_companies?: string[];
+            /**
+             * Excluded Keywords
+             * @description Keywords to exclude from job titles or descriptions
+             * @example [
+             *       "crypto",
+             *       "gambling"
+             *     ]
+             */
+            excluded_keywords?: string[];
+            /**
+             * Work Authorization
+             * @description Work authorization status (e.g., 'US Citizen', 'Needs Sponsorship')
+             * @example Needs Sponsorship
+             */
+            work_authorization?: string | null;
+            /**
+             * Experience Gap Tolerance Years
+             * @description Tolerated gap in years between candidate experience and role requirement
+             * @default 2
+             * @example 2
+             */
+            experience_gap_tolerance_years: number;
         };
         /** Certification */
         Certification: {
@@ -587,6 +809,19 @@ export interface components {
             honors?: string[];
         };
         /**
+         * ExportResumeDocxRequest
+         * @description Request payload for exporting verified resume to ATS-friendly DOCX format.
+         */
+        ExportResumeDocxRequest: {
+            /** @description Approved candidate profile / resume sections */
+            resume: components["schemas"]["ParsedProfile"];
+            /**
+             * Target Job Title
+             * @description Optional target job title for document naming
+             */
+            target_job_title?: string | null;
+        };
+        /**
          * FabricationReport
          * @description Hallucination and truthfulness audit report enforcing Hard Rule 4.
          * @example {
@@ -758,6 +993,7 @@ export interface components {
          *       "currency": "USD",
          *       "description": "We are seeking a Senior AI Platform Engineer...",
          *       "external_id": "adzuna-job-98421",
+         *       "is_demo": false,
          *       "location": "San Francisco, CA",
          *       "posted_at": "2026-11-01T12:00:00Z",
          *       "remote": true,
@@ -863,6 +1099,124 @@ export interface components {
              * @example senior
              */
             seniority: string;
+            /**
+             * Is Demo
+             * @description Flag indicating synthetic/demo data (only when USE_DEMO_JOBS is enabled)
+             * @default false
+             * @example false
+             */
+            is_demo: boolean;
+        };
+        /**
+         * JobQuery
+         * @description Query parameters for searching jobs across sources.
+         */
+        JobQuery: {
+            /**
+             * Keywords
+             * @description Search keywords (role title, domain, or technology)
+             * @default
+             * @example Full Stack Engineer
+             */
+            keywords: string;
+            /**
+             * Location
+             * @description Target location filter
+             * @example San Francisco, CA
+             */
+            location?: string | null;
+            /**
+             * Remote Only
+             * @description Filter exclusively for remote opportunities
+             * @default false
+             * @example true
+             */
+            remote_only: boolean;
+            /**
+             * Seniority
+             * @description Desired seniority level (entry, junior, mid, senior, lead, staff)
+             * @example senior
+             */
+            seniority?: string | null;
+            /**
+             * Limit
+             * @description Maximum merged postings to return
+             * @default 50
+             * @example 20
+             */
+            limit: number;
+            /**
+             * Sources
+             * @description List of specific sources to query (empty queries all active sources)
+             * @example [
+             *       "remotive",
+             *       "arbeitnow"
+             *     ]
+             */
+            sources?: string[];
+            /**
+             * Company Slugs
+             * @description Target company slugs for ATS boards (Greenhouse / Lever)
+             * @example [
+             *       "airbnb",
+             *       "stripe"
+             *     ]
+             */
+            company_slugs?: string[];
+            /**
+             * Greenhouse Boards
+             * @description Specific Greenhouse company board slugs to query
+             */
+            greenhouse_boards?: string[];
+            /**
+             * Lever Boards
+             * @description Specific Lever company board slugs to query
+             */
+            lever_boards?: string[];
+        };
+        /**
+         * JobWithEmbedding
+         * @description Job posting optionally accompanied by pre-computed embedding.
+         */
+        JobWithEmbedding: {
+            /** @description Normalized job posting */
+            job: components["schemas"]["JobPosting"];
+            /**
+             * Embedding
+             * @description Cached 384-dim vector embedding from MongoDB Atlas or client
+             */
+            embedding?: number[] | null;
+        };
+        /**
+         * KeywordPlanItem
+         * @description Extracted job keyword mapped to candidate evidence or identified gap.
+         */
+        KeywordPlanItem: {
+            /**
+             * Keyword
+             * @description Target keyword or technology required by the job
+             */
+            keyword: string;
+            /**
+             * Category
+             * @description Priority category ('required' or 'preferred')
+             * @default required
+             * @example required
+             */
+            category: string;
+            /**
+             * Evidence
+             * @description Pointer or excerpt of verified profile evidence, or None if gap
+             * @example profile.experience[0].bullets[0]
+             */
+            evidence?: string | null;
+            /**
+             * Is Gap
+             * @description True if keyword is missing from candidate source profile
+             * @default false
+             * @example false
+             */
+            is_gap: boolean;
         };
         /** LanguageProficiency */
         LanguageProficiency: {
@@ -978,6 +1332,32 @@ export interface components {
              * @example null
              */
             hard_filter_reason?: string | null;
+            /**
+             * Strengths
+             * @description Key strengths matching the candidate to this position
+             */
+            strengths?: string[];
+            /**
+             * Gaps
+             * @description Identified candidate qualification gaps or missing criteria
+             */
+            gaps?: string[];
+            /**
+             * Suggestion
+             * @description Short actionable recommendation for the candidate application
+             */
+            suggestion?: string | null;
+            /**
+             * Score Adjustment
+             * @description LLM score adjustment bounded within [-8, +8] points
+             * @default 0
+             */
+            score_adjustment: number;
+            /**
+             * Adjustment Reason
+             * @description Justification for LLM score adjustment
+             */
+            adjustment_reason?: string | null;
         };
         /**
          * MatchScoreBreakdown
@@ -1237,6 +1617,120 @@ export interface components {
             rationale: string;
         };
         /**
+         * RankRequest
+         * @description Request payload for hybrid job ranking against a parsed profile.
+         */
+        RankRequest: {
+            /** @description Candidate profile */
+            profile: components["schemas"]["ParsedProfile"];
+            /**
+             * Jobs
+             * @description Job postings to evaluate, optionally with cached embeddings
+             */
+            jobs: components["schemas"]["JobWithEmbedding"][];
+            /** @description Candidate constraints and hard filter rules */
+            preferences?: components["schemas"]["CandidatePreferences"];
+            /**
+             * Llm Rerank
+             * @description Enable LLM reranking and explanation for top 15 candidates
+             * @default true
+             */
+            llm_rerank: boolean;
+            /** @description Documented stage 4 weights */
+            weights?: components["schemas"]["RankingWeights"];
+        };
+        /**
+         * RankResponse
+         * @description Response containing hybrid ranked job opportunities with score breakdowns.
+         */
+        RankResponse: {
+            /** @description Payload data */
+            data: components["schemas"]["RankResponseData"];
+            /**
+             * Warnings
+             * @description Processing warnings and notices
+             */
+            warnings?: string[];
+            /** @description Execution metadata and timing */
+            meta?: components["schemas"]["ApiMeta"];
+        };
+        /**
+         * RankResponseData
+         * @description Output data containing ordered job matches and telemetry.
+         */
+        RankResponseData: {
+            /**
+             * Ranked Jobs
+             * @description Ranked jobs (top matches first; hard filter failures at the end)
+             */
+            ranked_jobs: components["schemas"]["RankedJobItem"][];
+            /**
+             * Total
+             * @description Total number of evaluated jobs
+             */
+            total: number;
+            /**
+             * Unfiltered Count
+             * @description Count of jobs successfully passing hard filters
+             */
+            unfiltered_count: number;
+            /**
+             * Hard Filtered Count
+             * @description Count of jobs failing hard filters
+             */
+            hard_filtered_count: number;
+            /**
+             * New Embeddings Generated
+             * @description Number of newly computed vector embeddings
+             */
+            new_embeddings_generated: number;
+        };
+        /**
+         * RankedJobItem
+         * @description Evaluated job entry with match analysis and vector embedding.
+         */
+        RankedJobItem: {
+            /** @description Job posting details */
+            job: components["schemas"]["JobPosting"];
+            /** @description Match evaluation score and breakdown */
+            match: components["schemas"]["MatchResult"];
+            /**
+             * Embedding
+             * @description Embedding vector (returned for persistence in MongoDB Atlas)
+             */
+            embedding?: number[] | null;
+        };
+        /**
+         * RankingWeights
+         * @description Configurable scoring weights summing to 1.0.
+         */
+        RankingWeights: {
+            /**
+             * Semantic
+             * @description Weight for dense embedding similarity
+             * @default 0.35
+             */
+            semantic: number;
+            /**
+             * Keyword
+             * @description Weight for BM25 lexical keyword score
+             * @default 0.2
+             */
+            keyword: number;
+            /**
+             * Skills
+             * @description Weight for skill overlap score
+             * @default 0.3
+             */
+            skills: number;
+            /**
+             * Experience
+             * @description Weight for seniority and experience gap score
+             * @default 0.15
+             */
+            experience: number;
+        };
+        /**
          * ResumeChange
          * @description Specific edit or rephrasing applied during resume tailoring.
          */
@@ -1297,6 +1791,89 @@ export interface components {
             context: string;
         };
         /**
+         * SearchJobsResponse
+         * @description Response containing aggregated and deduped job listings with source telemetry.
+         */
+        SearchJobsResponse: {
+            /** @description Payload data */
+            data: components["schemas"]["SearchJobsResult"];
+            /**
+             * Warnings
+             * @description Processing warnings and notices
+             */
+            warnings?: string[];
+            /** @description Execution metadata and timing */
+            meta?: components["schemas"]["ApiMeta"];
+        };
+        /**
+         * SearchJobsResult
+         * @description Aggregated and deduped job search results with per-source telemetry.
+         */
+        SearchJobsResult: {
+            /**
+             * Jobs
+             * @description Merged, filtered, and deduplicated job postings
+             */
+            jobs?: components["schemas"]["JobPosting"][];
+            /**
+             * Total
+             * @description Count of deduplicated jobs returned in payload
+             * @default 0
+             */
+            total: number;
+            /**
+             * Sources Responded
+             * @description Number of queried sources that returned successfully
+             * @default 0
+             */
+            sources_responded: number;
+            /**
+             * Sources Total
+             * @description Total number of sources queried in this execution
+             * @default 0
+             */
+            sources_total: number;
+            /**
+             * Source Statuses
+             * @description Detailed per-source execution outcome
+             */
+            source_statuses?: components["schemas"]["SourceStatus"][];
+        };
+        /**
+         * SourceStatus
+         * @description Status metadata for an individual job source queried.
+         */
+        SourceStatus: {
+            /**
+             * Source
+             * @description Name/identifier of the job source
+             */
+            source: string;
+            /**
+             * Status
+             * @description Query outcome: 'ok', 'error', or 'skipped'
+             * @example ok
+             */
+            status: string;
+            /**
+             * Count
+             * @description Number of raw job postings returned from this source
+             * @default 0
+             */
+            count: number;
+            /**
+             * Error
+             * @description Error detail message if the source failed
+             */
+            error?: string | null;
+            /**
+             * Duration Ms
+             * @description Execution duration in milliseconds
+             * @default 0
+             */
+            duration_ms: number;
+        };
+        /**
          * StarAnswer
          * @description Structured STAR framework response formulation.
          */
@@ -1335,6 +1912,8 @@ export interface components {
             profile: components["schemas"]["ParsedProfile"];
             /** @description Target job posting */
             job: components["schemas"]["JobPosting"];
+            /** @description Optional company research insight */
+            company_insight?: components["schemas"]["CompanyInsight"] | null;
         };
         /**
          * TailorResumeResponse
@@ -1399,8 +1978,15 @@ export interface components {
              * @description Itemized list of all rephrased bullets and text changes
              */
             changes?: components["schemas"]["ResumeChange"][];
+            /**
+             * Keyword Plan
+             * @description Audit mapping of job keywords to verified evidence or reported gaps
+             */
+            keyword_plan?: components["schemas"]["KeywordPlanItem"][];
             /** @description ATS optimization analysis and keyword matching metrics */
             ats_report: components["schemas"]["AtsReport"];
+            /** @description Independent fabrication and truthfulness audit report */
+            fabrication_report?: components["schemas"]["FabricationReport"];
         };
         /**
          * TechnicalQuestion
@@ -1647,6 +2233,171 @@ export interface operations {
             };
         };
     };
+    search_jobs_api_v1_search_jobs_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["JobQuery"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SearchJobsResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    search_jobs_api_v1_jobs_search_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["JobQuery"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SearchJobsResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    search_jobs_v1_search_jobs_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["JobQuery"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SearchJobsResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    rank_jobs_api_v1_jobs_rank_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RankRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RankResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    rank_jobs_v1_rank_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RankRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RankResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     match_job_api_v1_jobs_match_post: {
         parameters: {
             query?: never;
@@ -1779,6 +2530,39 @@ export interface operations {
             };
         };
     };
+    tailor_resume_v1_tailor_resume_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TailorResumeRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TailorResumeResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     check_fabrication_api_v1_resume_check_fabrication_post: {
         parameters: {
             query?: never;
@@ -1799,6 +2583,105 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CheckFabricationResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    check_fabrication_v1_check_fabrication_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CheckFabricationRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CheckFabricationResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    export_resume_docx_api_v1_resume_export_docx_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExportResumeDocxRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    export_resume_docx_v1_export_resume_docx_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExportResumeDocxRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */

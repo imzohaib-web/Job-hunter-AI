@@ -9,12 +9,13 @@ from app.schemas.envelopes import (
     ApiMeta,
     ParseResumeRequest,
     ParseResumeResponse,
+    SearchJobsResponse,
 )
 from app.schemas.fabrication import FabricationReport, UnsupportedClaim
 from app.schemas.interview import (
     TechnicalQuestion,
 )
-from app.schemas.job import JobPosting
+from app.schemas.job import JobPosting, JobQuery, SearchJobsResult, SourceStatus
 from app.schemas.match import MatchResult, MatchScoreBreakdown
 from app.schemas.profile import (
     Education,
@@ -187,10 +188,9 @@ def test_match_result_explanation_length() -> None:
             ),
             explanation=long_explanation,
         )
-    assert (
-        "Explanation exceeds maximum allowed length" in str(exc.value)
-        or "at most 400 characters" in str(exc.value)
-    )
+    assert "Explanation exceeds maximum allowed length" in str(
+        exc.value
+    ) or "at most 400 characters" in str(exc.value)
 
 
 def test_match_result_hard_filter_requires_reason() -> None:
@@ -222,9 +222,8 @@ def test_company_insight_confidence_validation() -> None:
             summary="Robotics startup",
             confidence=1.2,
         )
-    assert (
-        "less than or equal to 1" in str(exc.value)
-        or "Confidence score must be between" in str(exc.value)
+    assert "less than or equal to 1" in str(exc.value) or "Confidence score must be between" in str(
+        exc.value
     )
 
 
@@ -328,3 +327,72 @@ def test_api_meta_and_envelopes() -> None:
 
     req = ParseResumeRequest(resume_text="Sample text")
     assert req.resume_text == "Sample text"
+
+
+def test_job_query_and_search_schemas() -> None:
+    query = JobQuery(keywords="Python", location="Remote", limit=25)
+    assert query.keywords == "Python"
+    assert query.limit == 25
+
+    status = SourceStatus(source="remotive", status="ok", count=5, duration_ms=100.0)
+    assert status.status == "ok"
+
+    result = SearchJobsResult(
+        jobs=[create_sample_job()],
+        total=1,
+        sources_responded=1,
+        sources_total=1,
+        source_statuses=[status],
+    )
+    assert result.total == 1
+    assert result.jobs[0].is_demo is False
+
+    response = SearchJobsResponse(data=result)
+    assert response.data.total == 1
+
+
+def test_ranking_schemas() -> None:
+    from app.schemas.match import (
+        CandidatePreferences,
+        JobWithEmbedding,
+        RankedJobItem,
+        RankingWeights,
+        RankRequest,
+        RankResponseData,
+    )
+
+    weights = RankingWeights(semantic=0.35, keyword=0.20, skills=0.30, experience=0.15)
+    assert weights.semantic == 0.35
+
+    prefs = CandidatePreferences(remote_only=True, excluded_companies=["EvilCorp"])
+    assert prefs.remote_only is True
+    assert "EvilCorp" in prefs.excluded_companies
+
+    job = create_sample_job()
+    job_item = JobWithEmbedding(job=job, embedding=[0.5] * 384)
+    assert len(job_item.embedding or []) == 384
+
+    profile = create_sample_profile()
+    req = RankRequest(profile=profile, jobs=[job_item], preferences=prefs)
+    assert len(req.jobs) == 1
+
+    match_res = MatchResult(
+        job_id="job-12345",
+        overall_score=85,
+        breakdown=MatchScoreBreakdown(
+            semantic=85.0, keyword=80.0, skills=90.0, experience=85.0, location=100.0
+        ),
+        matched_skills=["Python"],
+        missing_skills=[],
+        explanation="Great fit",
+    )
+    ranked_item = RankedJobItem(job=job, match=match_res, embedding=[0.5] * 384)
+    data = RankResponseData(
+        ranked_jobs=[ranked_item],
+        total=1,
+        unfiltered_count=1,
+        hard_filtered_count=0,
+        new_embeddings_generated=0,
+    )
+    assert data.total == 1
+    assert data.ranked_jobs[0].match.overall_score == 85

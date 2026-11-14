@@ -10,8 +10,8 @@ from app.schemas.company import CompanyInsight
 from app.schemas.cover_letter import CoverLetter
 from app.schemas.fabrication import FabricationReport
 from app.schemas.interview import InterviewPack
-from app.schemas.job import JobPosting
-from app.schemas.match import MatchResult
+from app.schemas.job import JobPosting, SearchJobsResult
+from app.schemas.match import MatchResult, RankResponseData
 from app.schemas.profile import ParsedProfile
 from app.schemas.tailoring import TailoredResume
 
@@ -69,6 +69,10 @@ class ParseResumeResponse(ApiResponse[ParsedProfile]):
     """Response containing structured parsed profile."""
 
 
+class SearchJobsResponse(ApiResponse[SearchJobsResult]):
+    """Response containing aggregated and deduped job listings with source telemetry."""
+
+
 class MatchJobRequest(BaseModel):
     """Request payload for single job qualification scoring."""
 
@@ -89,6 +93,10 @@ class BatchMatchRequest(BaseModel):
 
 class BatchMatchResponse(ApiResponse[list[MatchResult]]):
     """Response containing match rankings for all provided jobs."""
+
+
+class RankResponse(ApiResponse[RankResponseData]):
+    """Response containing hybrid ranked job opportunities with score breakdowns."""
 
 
 class CompanyResearchRequest(BaseModel):
@@ -114,10 +122,24 @@ class TailorResumeRequest(BaseModel):
 
     profile: ParsedProfile = Field(description="Source candidate profile")
     job: JobPosting = Field(description="Target job posting")
+    company_insight: CompanyInsight | None = Field(
+        default=None,
+        description="Optional company research insight",
+    )
 
 
 class TailorResumeResponse(ApiResponse[TailoredResume]):
     """Response containing tailored resume and ATS report."""
+
+
+class ExportResumeDocxRequest(BaseModel):
+    """Request payload for exporting verified resume to ATS-friendly DOCX format."""
+
+    resume: ParsedProfile = Field(description="Approved candidate profile / resume sections")
+    target_job_title: str | None = Field(
+        default=None,
+        description="Optional target job title for document naming",
+    )
 
 
 class CheckFabricationRequest(BaseModel):

@@ -74,6 +74,11 @@ class JobPosting(BaseModel):
         description="Seniority level (e.g. entry, junior, mid, senior, lead, staff)",
         examples=["senior"],
     )
+    is_demo: bool = Field(
+        default=False,
+        description="Flag indicating synthetic/demo data (only when USE_DEMO_JOBS is enabled)",
+        examples=[False],
+    )
 
     @field_validator("currency")
     @classmethod
@@ -112,6 +117,109 @@ class JobPosting(BaseModel):
                 "posted_at": "2026-11-01T12:00:00Z",
                 "skills_required": ["Python", "FastAPI", "LLM APIs"],
                 "seniority": "senior",
+                "is_demo": False,
             }
         }
+    )
+
+
+class JobQuery(BaseModel):
+    """Query parameters for searching jobs across sources."""
+
+    keywords: str = Field(
+        default="",
+        description="Search keywords (role title, domain, or technology)",
+        examples=["Full Stack Engineer"],
+    )
+    location: str | None = Field(
+        default=None,
+        description="Target location filter",
+        examples=["San Francisco, CA"],
+    )
+    remote_only: bool = Field(
+        default=False,
+        description="Filter exclusively for remote opportunities",
+        examples=[True],
+    )
+    seniority: str | None = Field(
+        default=None,
+        description="Desired seniority level (entry, junior, mid, senior, lead, staff)",
+        examples=["senior"],
+    )
+    limit: int = Field(
+        default=50,
+        ge=1,
+        le=200,
+        description="Maximum merged postings to return",
+        examples=[20],
+    )
+    sources: list[str] = Field(
+        default_factory=list,
+        description="List of specific sources to query (empty queries all active sources)",
+        examples=[["remotive", "arbeitnow"]],
+    )
+    company_slugs: list[str] = Field(
+        default_factory=list,
+        description="Target company slugs for ATS boards (Greenhouse / Lever)",
+        examples=[["airbnb", "stripe"]],
+    )
+    greenhouse_boards: list[str] = Field(
+        default_factory=list,
+        description="Specific Greenhouse company board slugs to query",
+    )
+    lever_boards: list[str] = Field(
+        default_factory=list,
+        description="Specific Lever company board slugs to query",
+    )
+
+
+class SourceStatus(BaseModel):
+    """Status metadata for an individual job source queried."""
+
+    source: str = Field(description="Name/identifier of the job source")
+    status: str = Field(
+        description="Query outcome: 'ok', 'error', or 'skipped'",
+        examples=["ok"],
+    )
+    count: int = Field(
+        default=0,
+        ge=0,
+        description="Number of raw job postings returned from this source",
+    )
+    error: str | None = Field(
+        default=None,
+        description="Error detail message if the source failed",
+    )
+    duration_ms: float = Field(
+        default=0.0,
+        ge=0.0,
+        description="Execution duration in milliseconds",
+    )
+
+
+class SearchJobsResult(BaseModel):
+    """Aggregated and deduped job search results with per-source telemetry."""
+
+    jobs: list[JobPosting] = Field(
+        default_factory=list,
+        description="Merged, filtered, and deduplicated job postings",
+    )
+    total: int = Field(
+        default=0,
+        ge=0,
+        description="Count of deduplicated jobs returned in payload",
+    )
+    sources_responded: int = Field(
+        default=0,
+        ge=0,
+        description="Number of queried sources that returned successfully",
+    )
+    sources_total: int = Field(
+        default=0,
+        ge=0,
+        description="Total number of sources queried in this execution",
+    )
+    source_statuses: list[SourceStatus] = Field(
+        default_factory=list,
+        description="Detailed per-source execution outcome",
     )
