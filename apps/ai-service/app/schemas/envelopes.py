@@ -7,9 +7,7 @@ from typing import Generic, TypeVar
 from pydantic import BaseModel, Field
 
 from app.schemas.company import CompanyInsight
-from app.schemas.cover_letter import CoverLetter
 from app.schemas.fabrication import FabricationReport
-from app.schemas.interview import InterviewPack
 from app.schemas.job import JobPosting, SearchJobsResult
 from app.schemas.match import MatchResult, RankResponseData
 from app.schemas.profile import ParsedProfile
@@ -107,10 +105,23 @@ class CompanyResearchRequest(BaseModel):
         description="Name of the company to analyze",
         examples=["Acme Robotics"],
     )
+    website_url: str | None = Field(
+        default=None,
+        description="Optional primary website URL of the company to fetch and research",
+        examples=["https://acmerobotics.example.com"],
+    )
+    company_url: str | None = Field(
+        default=None,
+        description="Alternative field name for website_url",
+    )
     raw_context: str | None = Field(
         default=None,
         description="Optional scraped text, job description snippet, or press releases",
     )
+
+    @property
+    def target_url(self) -> str | None:
+        return self.website_url or self.company_url
 
 
 class CompanyResearchResponse(ApiResponse[CompanyInsight]):
@@ -147,7 +158,7 @@ class CheckFabricationRequest(BaseModel):
 
     tailored_text: str = Field(
         min_length=1,
-        description="Generated resume or cover letter text to audit",
+        description="Generated tailored resume text to audit",
     )
     original_profile: ParsedProfile = Field(
         description="Original verified source profile",
@@ -156,30 +167,3 @@ class CheckFabricationRequest(BaseModel):
 
 class CheckFabricationResponse(ApiResponse[FabricationReport]):
     """Response containing truthfulness audit results."""
-
-
-class GenerateCoverLetterRequest(BaseModel):
-    """Request payload for cover letter generation."""
-
-    profile: ParsedProfile = Field(description="Candidate profile")
-    job: JobPosting = Field(description="Target job posting")
-    tone: str = Field(
-        default="professional",
-        description="Desired tone of voice (e.g. professional, enthusiastic, conversational)",
-        examples=["professional"],
-    )
-
-
-class GenerateCoverLetterResponse(ApiResponse[CoverLetter]):
-    """Response containing grounded cover letter."""
-
-
-class GenerateInterviewPackRequest(BaseModel):
-    """Request payload for personalized interview preparation generation."""
-
-    profile: ParsedProfile = Field(description="Candidate profile")
-    job: JobPosting = Field(description="Target job posting")
-
-
-class GenerateInterviewPackResponse(ApiResponse[InterviewPack]):
-    """Response containing customized behavioral and technical interview questions."""

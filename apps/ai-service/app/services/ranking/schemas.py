@@ -28,7 +28,7 @@ class JobRerankItem(BaseModel):
         description="Top 1-3 missing skills, tooling, or domain qualification gaps",
     )
     suggestion: str = Field(
-        description="Short actionable recommendation for candidate application or interview prep",
+        description="Short actionable recommendation for candidate application",
     )
 
 

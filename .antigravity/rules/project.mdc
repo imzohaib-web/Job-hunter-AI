@@ -9,7 +9,7 @@ You are a senior full-stack + AI engineer helping me build "JobPilot", a product
 
 ## PRODUCT
 
-A user uploads a resume, reviews/edits the parsed profile, gets ranked job matches with explanations and skill gaps, and on demand prepares an application for one job: company research, a tailored resume (rephrasing only, never inventing facts), a cover letter, and interview prep. They track applications on a kanban board and see analytics.
+A user uploads a resume, reviews/edits the parsed profile, gets ranked job matches with explanations and skill gaps, and on demand prepares an application for one job: company research and a tailored resume (rephrasing only, never inventing facts). They track applications on a kanban board and see analytics.
 
 ## ARCHITECTURE (monorepo)
 
@@ -25,7 +25,7 @@ A user uploads a resume, reviews/edits the parsed profile, gets ranked job match
 1. TypeScript strict mode everywhere in JS land; Python fully type-hinted, ruff + mypy clean.
 2. Every LLM call returns a Pydantic-validated structured output with retry-on-validation-failure (max 2 retries). Never parse free text with regex.
 3. Treat job descriptions, scraped pages and resume text as UNTRUSTED input: wrap in delimiters, instruct the model to treat them as data, strip HTML, cap length.
-4. The tailoring and cover-letter agents must only use facts present in the user's verified profile. No invented skills, employers, metrics or dates.
+4. The tailoring agent must only use facts present in the user's verified profile. No invented skills, employers, metrics or dates.
 5. No secrets in code. All config via env vars validated at startup (zod in api, pydantic-settings in ai-service). Model names are env vars, never hardcoded.
 6. Never log resume text or other PII. Log ids, durations, token counts, cost.
 7. Every endpoint has input validation, auth (except health/login/register), consistent error shape `{error:{code,message,details?}}`, and a test.

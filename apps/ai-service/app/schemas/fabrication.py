@@ -13,7 +13,7 @@ class UnsupportedClaim(BaseModel):
         examples=["Led a team of 15 engineers across 3 timezones"],
     )
     location: str = Field(
-        description="Location in the tailored resume or cover letter where the claim appears",
+        description="Location in the tailored resume where the claim appears",
         examples=["experience[0].bullets[2]"],
     )
     reason: str | None = Field(

@@ -441,8 +441,49 @@
         "tags": [
           "AI Operations"
         ],
-        "summary": "Generate intelligence and culture signals for hiring company",
+        "summary": "Synthesize company intelligence, tech stack, and culture from public web and search",
         "operationId": "research_company_api_v1_company_research_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompanyResearchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompanyResearchResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/company-research": {
+      "post": {
+        "tags": [
+          "AI Operations"
+        ],
+        "summary": "Synthesize company intelligence, tech stack, and culture from public web and search",
+        "operationId": "research_company_v1_company_research_post",
         "requestBody": {
           "content": {
             "application/json": {
@@ -564,7 +605,7 @@
         "tags": [
           "AI Operations"
         ],
-        "summary": "Audit tailored resume or cover letter against candidate profile",
+        "summary": "Audit tailored resume against candidate profile",
         "operationId": "check_fabrication_api_v1_resume_check_fabrication_post",
         "requestBody": {
           "content": {
@@ -605,7 +646,7 @@
         "tags": [
           "AI Operations"
         ],
-        "summary": "Audit tailored resume or cover letter against candidate profile",
+        "summary": "Audit tailored resume against candidate profile",
         "operationId": "check_fabrication_v1_check_fabrication_post",
         "requestBody": {
           "content": {
@@ -703,88 +744,6 @@
             "content": {
               "application/json": {
                 "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/cover-letter/generate": {
-      "post": {
-        "tags": [
-          "AI Operations"
-        ],
-        "summary": "Generate grounded, personalized cover letter for target role",
-        "operationId": "generate_cover_letter_api_v1_cover_letter_generate_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/GenerateCoverLetterRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/GenerateCoverLetterResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/interview/generate": {
-      "post": {
-        "tags": [
-          "AI Operations"
-        ],
-        "summary": "Generate behavioral and technical interview preparation pack",
-        "operationId": "generate_interview_pack_api_v1_interview_generate_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/GenerateInterviewPackRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/GenerateInterviewPackResponse"
-                }
               }
             }
           },
@@ -997,38 +956,6 @@
         "title": "BatchMatchResponse",
         "description": "Response containing match rankings for all provided jobs."
       },
-      "BehavioralQuestion": {
-        "properties": {
-          "question": {
-            "type": "string",
-            "title": "Question",
-            "description": "Common behavioral question likely to be asked by interviewers",
-            "examples": [
-              "Tell me about a time you optimized a lagging production system under pressure."
-            ]
-          },
-          "star_answer": {
-            "$ref": "#/components/schemas/StarAnswer",
-            "description": "Tailored response structured using Situation, Task, Action, Result"
-          },
-          "based_on": {
-            "type": "string",
-            "title": "Based On",
-            "description": "Source experience from verified profile used as the foundation",
-            "examples": [
-              "Senior AI Engineer role at TechCorp Labs (2023)"
-            ]
-          }
-        },
-        "type": "object",
-        "required": [
-          "question",
-          "star_answer",
-          "based_on"
-        ],
-        "title": "BehavioralQuestion",
-        "description": "Behavioral interview prep question grounded in candidate verified experience."
-      },
       "Body_parse_resume_api_v1_parse_resume_post": {
         "properties": {
           "file": {
@@ -1225,7 +1152,7 @@
             "type": "string",
             "minLength": 1,
             "title": "Tailored Text",
-            "description": "Generated resume or cover letter text to audit"
+            "description": "Generated tailored resume text to audit"
           },
           "original_profile": {
             "$ref": "#/components/schemas/ParsedProfile",
@@ -1276,6 +1203,48 @@
               "Series B robotics and AI startup specializing in warehouse logistics."
             ]
           },
+          "company_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Company Name",
+            "description": "Canonical or verified name of the organization",
+            "examples": [
+              "Acme Robotics"
+            ]
+          },
+          "products_or_services": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Products Or Services",
+            "description": "Primary products or services offered by the company",
+            "examples": [
+              "Automated guided vehicles",
+              "Warehouse dispatch software"
+            ]
+          },
+          "industry": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Industry",
+            "description": "Industry or market sector",
+            "examples": [
+              "Robotics & Supply Chain Logistics"
+            ]
+          },
           "tech_stack": {
             "items": {
               "type": "string"
@@ -1319,6 +1288,18 @@
               "50-150 employees"
             ]
           },
+          "applicant_notes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Applicant Notes",
+            "description": "Key company intelligence, interview insights, and highlights for job applicants",
+            "examples": [
+              "High focus on distributed systems",
+              "Series B funding secured in 2024"
+            ]
+          },
           "sources": {
             "items": {
               "type": "string"
@@ -1339,6 +1320,17 @@
             "description": "Confidence score for the gathered insights between 0.0 and 1.0",
             "examples": [
               0.88
+            ]
+          },
+          "limitations": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Limitations",
+            "description": "Unverified fields or limitations observed during research",
+            "examples": [
+              "Tech stack unverified on public landing page"
             ]
           }
         },
@@ -1378,6 +1370,33 @@
             "examples": [
               "Acme Robotics"
             ]
+          },
+          "website_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Website Url",
+            "description": "Optional primary website URL of the company to fetch and research",
+            "examples": [
+              "https://acmerobotics.example.com"
+            ]
+          },
+          "company_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Company Url",
+            "description": "Alternative field name for website_url"
           },
           "raw_context": {
             "anyOf": [
@@ -1424,62 +1443,6 @@
         ],
         "title": "CompanyResearchResponse",
         "description": "Response containing researched company intelligence."
-      },
-      "CoverLetter": {
-        "properties": {
-          "paragraphs": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Paragraphs",
-            "description": "Sequential paragraphs comprising the tailored cover letter",
-            "examples": [
-              "Dear Hiring Team,\n\nI am thrilled to apply for the AI Engineer role...",
-              "Over the past 5 years, I have architected low-latency LLM microservices...",
-              "Thank you for your consideration. I look forward to speaking."
-            ]
-          },
-          "word_count": {
-            "type": "integer",
-            "minimum": 0.0,
-            "title": "Word Count",
-            "description": "Total word count across all paragraphs",
-            "default": 0,
-            "examples": [
-              285
-            ]
-          },
-          "claims_used": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Claims Used",
-            "description": "Explicit source facts from candidate profile cited in the letter",
-            "examples": [
-              "5 years building LLM microservices",
-              "Deployed production pipelines on Kubernetes"
-            ]
-          }
-        },
-        "type": "object",
-        "required": [
-          "paragraphs"
-        ],
-        "title": "CoverLetter",
-        "description": "Tailored cover letter adhering strictly to verified candidate facts.",
-        "example": {
-          "claims_used": [
-            "5 years Python and FastAPI experience"
-          ],
-          "paragraphs": [
-            "Dear Hiring Team at Acme Robotics,",
-            "I am writing to express my enthusiasm for the AI Platform Engineer role...",
-            "Sincerely, Jane Doe"
-          ],
-          "word_count": 160
-        }
       },
       "Education": {
         "properties": {
@@ -1645,105 +1608,6 @@
           "unsupported_claims": []
         }
       },
-      "GenerateCoverLetterRequest": {
-        "properties": {
-          "profile": {
-            "$ref": "#/components/schemas/ParsedProfile",
-            "description": "Candidate profile"
-          },
-          "job": {
-            "$ref": "#/components/schemas/JobPosting",
-            "description": "Target job posting"
-          },
-          "tone": {
-            "type": "string",
-            "title": "Tone",
-            "description": "Desired tone of voice (e.g. professional, enthusiastic, conversational)",
-            "default": "professional",
-            "examples": [
-              "professional"
-            ]
-          }
-        },
-        "type": "object",
-        "required": [
-          "profile",
-          "job"
-        ],
-        "title": "GenerateCoverLetterRequest",
-        "description": "Request payload for cover letter generation."
-      },
-      "GenerateCoverLetterResponse": {
-        "properties": {
-          "data": {
-            "$ref": "#/components/schemas/CoverLetter",
-            "description": "Payload data"
-          },
-          "warnings": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Warnings",
-            "description": "Processing warnings and notices"
-          },
-          "meta": {
-            "$ref": "#/components/schemas/ApiMeta",
-            "description": "Execution metadata and timing"
-          }
-        },
-        "type": "object",
-        "required": [
-          "data"
-        ],
-        "title": "GenerateCoverLetterResponse",
-        "description": "Response containing grounded cover letter."
-      },
-      "GenerateInterviewPackRequest": {
-        "properties": {
-          "profile": {
-            "$ref": "#/components/schemas/ParsedProfile",
-            "description": "Candidate profile"
-          },
-          "job": {
-            "$ref": "#/components/schemas/JobPosting",
-            "description": "Target job posting"
-          }
-        },
-        "type": "object",
-        "required": [
-          "profile",
-          "job"
-        ],
-        "title": "GenerateInterviewPackRequest",
-        "description": "Request payload for personalized interview preparation generation."
-      },
-      "GenerateInterviewPackResponse": {
-        "properties": {
-          "data": {
-            "$ref": "#/components/schemas/InterviewPack",
-            "description": "Payload data"
-          },
-          "warnings": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Warnings",
-            "description": "Processing warnings and notices"
-          },
-          "meta": {
-            "$ref": "#/components/schemas/ApiMeta",
-            "description": "Execution metadata and timing"
-          }
-        },
-        "type": "object",
-        "required": [
-          "data"
-        ],
-        "title": "GenerateInterviewPackResponse",
-        "description": "Response containing customized behavioral and technical interview questions."
-      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -1782,74 +1646,6 @@
         },
         "type": "object",
         "title": "HealthResponse"
-      },
-      "InterviewPack": {
-        "properties": {
-          "behavioral": {
-            "items": {
-              "$ref": "#/components/schemas/BehavioralQuestion"
-            },
-            "type": "array",
-            "title": "Behavioral",
-            "description": "Behavioral questions with candidate-grounded STAR answers"
-          },
-          "technical": {
-            "items": {
-              "$ref": "#/components/schemas/TechnicalQuestion"
-            },
-            "type": "array",
-            "title": "Technical",
-            "description": "Technical questions tailored to required technologies"
-          },
-          "role_specific": {
-            "items": {
-              "$ref": "#/components/schemas/RoleSpecificQuestion"
-            },
-            "type": "array",
-            "title": "Role Specific",
-            "description": "Role- and domain-specific questions"
-          },
-          "questions_to_ask": {
-            "items": {
-              "$ref": "#/components/schemas/QuestionToAsk"
-            },
-            "type": "array",
-            "title": "Questions To Ask",
-            "description": "High-signal questions for candidate to ask during interviews"
-          }
-        },
-        "type": "object",
-        "title": "InterviewPack",
-        "description": "Comprehensive personalized interview preparation pack for target opportunity.",
-        "example": {
-          "behavioral": [
-            {
-              "based_on": "TechCorp experience",
-              "question": "Tell me about a time you optimized an LLM pipeline.",
-              "star_answer": {
-                "action": "Introduced caching and concurrency semaphores.",
-                "result": "Latency dropped by 50%.",
-                "situation": "Our inference latency was spiking.",
-                "task": "Lower P99 latency below 300ms."
-              }
-            }
-          ],
-          "questions_to_ask": [
-            {
-              "question": "How do you handle model evaluations in CI?",
-              "rationale": "Shows interest in engineering rigor.",
-              "target_audience": "Peer Engineer"
-            }
-          ],
-          "role_specific": [],
-          "technical": [
-            {
-              "answer": "Constrained decoding with Pydantic validation.",
-              "difficulty": "medium",
-              "question": "How do you enforce structured JSON output?"
-            }
-          ]
-        }
       },
       "JobPosting": {
         "properties": {
@@ -2858,42 +2654,6 @@
         ],
         "title": "Project"
       },
-      "QuestionToAsk": {
-        "properties": {
-          "question": {
-            "type": "string",
-            "title": "Question",
-            "description": "Insightful question demonstrating candidate diligence and curiosity",
-            "examples": [
-              "How does the AI engineering team measure and monitor model drift?"
-            ]
-          },
-          "target_audience": {
-            "type": "string",
-            "title": "Target Audience",
-            "description": "Target interviewer role (e.g. Hiring Manager, Peer Engineer)",
-            "examples": [
-              "Hiring Manager"
-            ]
-          },
-          "rationale": {
-            "type": "string",
-            "title": "Rationale",
-            "description": "Strategic purpose and signal conveyed by asking this question",
-            "examples": [
-              "Demonstrates maturity in production lifecycle management."
-            ]
-          }
-        },
-        "type": "object",
-        "required": [
-          "question",
-          "target_audience",
-          "rationale"
-        ],
-        "title": "QuestionToAsk",
-        "description": "Strategic reverse-interview question for the candidate to ask interviewers."
-      },
       "RankRequest": {
         "properties": {
           "profile": {
@@ -3131,42 +2891,6 @@
         "title": "ResumeChange",
         "description": "Specific edit or rephrasing applied during resume tailoring."
       },
-      "RoleSpecificQuestion": {
-        "properties": {
-          "question": {
-            "type": "string",
-            "title": "Question",
-            "description": "Domain-specific scenario or operational question",
-            "examples": [
-              "How do you handle schema drifts when ingesting multi-vendor job feeds?"
-            ]
-          },
-          "answer": {
-            "type": "string",
-            "title": "Answer",
-            "description": "Pragmatic approach aligned with best practices",
-            "examples": [
-              "Implement an adapter pattern with strict validation and dead-letter queues."
-            ]
-          },
-          "context": {
-            "type": "string",
-            "title": "Context",
-            "description": "Contextual relevance to the prospective team",
-            "examples": [
-              "Core challenge in multi-source job ingestion systems"
-            ]
-          }
-        },
-        "type": "object",
-        "required": [
-          "question",
-          "answer",
-          "context"
-        ],
-        "title": "RoleSpecificQuestion",
-        "description": "Domain and role-specific question addressing the hiring team's unique domain."
-      },
       "SearchJobsResponse": {
         "properties": {
           "data": {
@@ -3286,51 +3010,6 @@
         ],
         "title": "SourceStatus",
         "description": "Status metadata for an individual job source queried."
-      },
-      "StarAnswer": {
-        "properties": {
-          "situation": {
-            "type": "string",
-            "title": "Situation",
-            "description": "Context and business/engineering setting",
-            "examples": [
-              "At TechCorp, our real-time LLM service experienced frequent timeout spikes."
-            ]
-          },
-          "task": {
-            "type": "string",
-            "title": "Task",
-            "description": "Specific goal or responsibility owned by the candidate",
-            "examples": [
-              "Tasked with diagnosing bottleneck and bringing P99 latency below 300ms."
-            ]
-          },
-          "action": {
-            "type": "string",
-            "title": "Action",
-            "description": "Key engineering decisions and implementation steps demonstrated",
-            "examples": [
-              "Implemented an async connection pool and optimized prompt token serialization."
-            ]
-          },
-          "result": {
-            "type": "string",
-            "title": "Result",
-            "description": "Quantifiable positive outcome and business impact achieved",
-            "examples": [
-              "P99 latency dropped by 55% and server compute costs decreased by 22%."
-            ]
-          }
-        },
-        "type": "object",
-        "required": [
-          "situation",
-          "task",
-          "action",
-          "result"
-        ],
-        "title": "StarAnswer",
-        "description": "Structured STAR framework response formulation."
       },
       "TailorResumeRequest": {
         "properties": {
@@ -3463,42 +3142,6 @@
           }
         }
       },
-      "TechnicalQuestion": {
-        "properties": {
-          "question": {
-            "type": "string",
-            "title": "Question",
-            "description": "Technical or architectural interview question",
-            "examples": [
-              "How would you enforce structured schema outputs in production LLMs?"
-            ]
-          },
-          "answer": {
-            "type": "string",
-            "title": "Answer",
-            "description": "Model comprehensive technical answer demonstrating deep domain expertise",
-            "examples": [
-              "Use provider-native JSON schema grammar enforcement and Pydantic validation loops."
-            ]
-          },
-          "difficulty": {
-            "type": "string",
-            "title": "Difficulty",
-            "description": "Question complexity: 'easy', 'medium', or 'hard'",
-            "examples": [
-              "medium"
-            ]
-          }
-        },
-        "type": "object",
-        "required": [
-          "question",
-          "answer",
-          "difficulty"
-        ],
-        "title": "TechnicalQuestion",
-        "description": "Targeted technical question based on job requirements and tech stack."
-      },
       "UnsupportedClaim": {
         "properties": {
           "text": {
@@ -3512,7 +3155,7 @@
           "location": {
             "type": "string",
             "title": "Location",
-            "description": "Location in the tailored resume or cover letter where the claim appears",
+            "description": "Location in the tailored resume where the claim appears",
             "examples": [
               "experience[0].bullets[2]"
             ]

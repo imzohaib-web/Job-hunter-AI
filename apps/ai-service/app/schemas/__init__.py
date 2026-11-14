@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from app.schemas.company import CompanyInsight
-from app.schemas.cover_letter import CoverLetter
 from app.schemas.envelopes import (
     ApiMeta,
     ApiResponse,
@@ -12,10 +11,6 @@ from app.schemas.envelopes import (
     CompanyResearchRequest,
     CompanyResearchResponse,
     ExportResumeDocxRequest,
-    GenerateCoverLetterRequest,
-    GenerateCoverLetterResponse,
-    GenerateInterviewPackRequest,
-    GenerateInterviewPackResponse,
     MatchJobRequest,
     MatchJobResponse,
     ParseResumeRequest,
@@ -27,14 +22,6 @@ from app.schemas.envelopes import (
 )
 from app.schemas.fabrication import FabricationReport, UnsupportedClaim
 from app.schemas.health import HealthResponse
-from app.schemas.interview import (
-    BehavioralQuestion,
-    InterviewPack,
-    QuestionToAsk,
-    RoleSpecificQuestion,
-    StarAnswer,
-    TechnicalQuestion,
-)
 from app.schemas.job import JobPosting, JobQuery, SearchJobsResult, SourceStatus
 from app.schemas.match import (
     CandidatePreferences,
@@ -70,7 +57,6 @@ __all__ = [
     "AtsSectionCheck",
     "BatchMatchRequest",
     "BatchMatchResponse",
-    "BehavioralQuestion",
     "CandidatePreferences",
     "Certification",
     "CheckFabricationRequest",
@@ -78,16 +64,10 @@ __all__ = [
     "CompanyInsight",
     "CompanyResearchRequest",
     "CompanyResearchResponse",
-    "CoverLetter",
     "Education",
     "ExportResumeDocxRequest",
     "FabricationReport",
-    "GenerateCoverLetterRequest",
-    "GenerateCoverLetterResponse",
-    "GenerateInterviewPackRequest",
-    "GenerateInterviewPackResponse",
     "HealthResponse",
-    "InterviewPack",
     "JobPosting",
     "JobQuery",
     "JobWithEmbedding",
@@ -102,22 +82,18 @@ __all__ = [
     "ParseResumeResponse",
     "ProfileSkill",
     "Project",
-    "QuestionToAsk",
     "RankRequest",
     "RankResponse",
     "RankResponseData",
     "RankedJobItem",
     "RankingWeights",
     "ResumeChange",
-    "RoleSpecificQuestion",
     "SearchJobsResponse",
     "SearchJobsResult",
     "SourceStatus",
-    "StarAnswer",
     "TailorResumeRequest",
     "TailorResumeResponse",
     "TailoredResume",
-    "TechnicalQuestion",
     "UnsupportedClaim",
     "WorkExperience",
 ]

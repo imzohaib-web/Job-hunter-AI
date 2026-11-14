@@ -46,6 +46,8 @@ module = [
     "PIL.*",
     "rank_bm25",
     "rank_bm25.*",
+    "bs4",
+    "bs4.*",
 ]
 ignore_missing_imports = true
 disallow_untyped_calls = false

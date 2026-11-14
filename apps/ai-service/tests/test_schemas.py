@@ -4,7 +4,6 @@ import pytest
 from pydantic import ValidationError
 
 from app.schemas.company import CompanyInsight
-from app.schemas.cover_letter import CoverLetter
 from app.schemas.envelopes import (
     ApiMeta,
     ParseResumeRequest,
@@ -12,9 +11,6 @@ from app.schemas.envelopes import (
     SearchJobsResponse,
 )
 from app.schemas.fabrication import FabricationReport, UnsupportedClaim
-from app.schemas.interview import (
-    TechnicalQuestion,
-)
 from app.schemas.job import JobPosting, JobQuery, SearchJobsResult, SourceStatus
 from app.schemas.match import MatchResult, MatchScoreBreakdown
 from app.schemas.profile import (
@@ -283,35 +279,6 @@ def test_fabrication_report_passed_consistency() -> None:
             passed=True,
         )
     assert "passed cannot be True when" in str(exc.value)
-
-
-def test_cover_letter_word_count_calculation() -> None:
-    letter = CoverLetter(
-        paragraphs=[
-            "Dear Hiring Manager, I am applying for the role.",
-            "I have five years of Python experience.",
-            "Sincerely, Jane Doe",
-        ]
-    )
-    assert letter.word_count == 19
-    assert len(letter.paragraphs) == 3
-
-
-def test_interview_pack_difficulty_validation() -> None:
-    q = TechnicalQuestion(
-        question="Explain CAP theorem",
-        answer="Consistency, Availability, Partition tolerance",
-        difficulty="medium",
-    )
-    assert q.difficulty == "medium"
-
-    with pytest.raises(ValidationError) as exc:
-        TechnicalQuestion(
-            question="Explain CAP theorem",
-            answer="Answer",
-            difficulty="super-hard",
-        )
-    assert "Difficulty must be 'easy', 'medium', or 'hard'" in str(exc.value)
 
 
 def test_api_meta_and_envelopes() -> None:

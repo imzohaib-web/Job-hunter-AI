@@ -10,6 +10,21 @@ class CompanyInsight(BaseModel):
         description="Comprehensive summary of company mission and business model",
         examples=["Series B robotics and AI startup specializing in warehouse logistics."],
     )
+    company_name: str | None = Field(
+        default=None,
+        description="Canonical or verified name of the organization",
+        examples=["Acme Robotics"],
+    )
+    products_or_services: list[str] = Field(
+        default_factory=list,
+        description="Primary products or services offered by the company",
+        examples=["Automated guided vehicles", "Warehouse dispatch software"],
+    )
+    industry: str | None = Field(
+        default=None,
+        description="Industry or market sector",
+        examples=["Robotics & Supply Chain Logistics"],
+    )
     tech_stack: list[str] = Field(
         default_factory=list,
         description="Primary engineering tech stack, frameworks, and infrastructure",
@@ -25,6 +40,13 @@ class CompanyInsight(BaseModel):
         description="Estimated team or company headcount bracket",
         examples=["50-150 employees"],
     )
+    applicant_notes: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Key company intelligence, interview insights, and highlights for job applicants"
+        ),
+        examples=["High focus on distributed systems", "Series B funding secured in 2024"],
+    )
     sources: list[str] = Field(
         default_factory=list,
         description="Public URLs or documentation sources referenced",
@@ -35,6 +57,11 @@ class CompanyInsight(BaseModel):
         le=1.0,
         description="Confidence score for the gathered insights between 0.0 and 1.0",
         examples=[0.88],
+    )
+    limitations: list[str] = Field(
+        default_factory=list,
+        description="Unverified fields or limitations observed during research",
+        examples=["Tech stack unverified on public landing page"],
     )
 
     @field_validator("confidence")

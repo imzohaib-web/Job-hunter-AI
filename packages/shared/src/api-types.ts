@@ -200,8 +200,25 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Generate intelligence and culture signals for hiring company */
+        /** Synthesize company intelligence, tech stack, and culture from public web and search */
         post: operations["research_company_api_v1_company_research_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/company-research": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Synthesize company intelligence, tech stack, and culture from public web and search */
+        post: operations["research_company_v1_company_research_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -251,7 +268,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Audit tailored resume or cover letter against candidate profile */
+        /** Audit tailored resume against candidate profile */
         post: operations["check_fabrication_api_v1_resume_check_fabrication_post"];
         delete?: never;
         options?: never;
@@ -268,7 +285,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Audit tailored resume or cover letter against candidate profile */
+        /** Audit tailored resume against candidate profile */
         post: operations["check_fabrication_v1_check_fabrication_post"];
         delete?: never;
         options?: never;
@@ -304,40 +321,6 @@ export interface paths {
         put?: never;
         /** Export verified resume into single-column ATS-friendly DOCX */
         post: operations["export_resume_docx_v1_export_resume_docx_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/cover-letter/generate": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Generate grounded, personalized cover letter for target role */
-        post: operations["generate_cover_letter_api_v1_cover_letter_generate_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/interview/generate": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Generate behavioral and technical interview preparation pack */
-        post: operations["generate_interview_pack_api_v1_interview_generate_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -472,26 +455,6 @@ export interface components {
             /** @description Execution metadata and timing */
             meta?: components["schemas"]["ApiMeta"];
         };
-        /**
-         * BehavioralQuestion
-         * @description Behavioral interview prep question grounded in candidate verified experience.
-         */
-        BehavioralQuestion: {
-            /**
-             * Question
-             * @description Common behavioral question likely to be asked by interviewers
-             * @example Tell me about a time you optimized a lagging production system under pressure.
-             */
-            question: string;
-            /** @description Tailored response structured using Situation, Task, Action, Result */
-            star_answer: components["schemas"]["StarAnswer"];
-            /**
-             * Based On
-             * @description Source experience from verified profile used as the foundation
-             * @example Senior AI Engineer role at TechCorp Labs (2023)
-             */
-            based_on: string;
-        };
         /** Body_parse_resume_api_v1_parse_resume_post */
         Body_parse_resume_api_v1_parse_resume_post: {
             /**
@@ -602,7 +565,7 @@ export interface components {
         CheckFabricationRequest: {
             /**
              * Tailored Text
-             * @description Generated resume or cover letter text to audit
+             * @description Generated tailored resume text to audit
              */
             tailored_text: string;
             /** @description Original verified source profile */
@@ -653,6 +616,25 @@ export interface components {
              */
             summary: string;
             /**
+             * Company Name
+             * @description Canonical or verified name of the organization
+             * @example Acme Robotics
+             */
+            company_name?: string | null;
+            /**
+             * Products Or Services
+             * @description Primary products or services offered by the company
+             * @example Automated guided vehicles
+             * @example Warehouse dispatch software
+             */
+            products_or_services?: string[];
+            /**
+             * Industry
+             * @description Industry or market sector
+             * @example Robotics & Supply Chain Logistics
+             */
+            industry?: string | null;
+            /**
              * Tech Stack
              * @description Primary engineering tech stack, frameworks, and infrastructure
              * @example Python
@@ -677,6 +659,13 @@ export interface components {
              */
             size_estimate?: string | null;
             /**
+             * Applicant Notes
+             * @description Key company intelligence, interview insights, and highlights for job applicants
+             * @example High focus on distributed systems
+             * @example Series B funding secured in 2024
+             */
+            applicant_notes?: string[];
+            /**
              * Sources
              * @description Public URLs or documentation sources referenced
              * @example https://company.example.com/about
@@ -689,6 +678,12 @@ export interface components {
              * @example 0.88
              */
             confidence: number;
+            /**
+             * Limitations
+             * @description Unverified fields or limitations observed during research
+             * @example Tech stack unverified on public landing page
+             */
+            limitations?: string[];
         };
         /**
          * CompanyResearchRequest
@@ -701,6 +696,17 @@ export interface components {
              * @example Acme Robotics
              */
             company_name: string;
+            /**
+             * Website Url
+             * @description Optional primary website URL of the company to fetch and research
+             * @example https://acmerobotics.example.com
+             */
+            website_url?: string | null;
+            /**
+             * Company Url
+             * @description Alternative field name for website_url
+             */
+            company_url?: string | null;
             /**
              * Raw Context
              * @description Optional scraped text, job description snippet, or press releases
@@ -721,47 +727,6 @@ export interface components {
             warnings?: string[];
             /** @description Execution metadata and timing */
             meta?: components["schemas"]["ApiMeta"];
-        };
-        /**
-         * CoverLetter
-         * @description Tailored cover letter adhering strictly to verified candidate facts.
-         * @example {
-         *       "claims_used": [
-         *         "5 years Python and FastAPI experience"
-         *       ],
-         *       "paragraphs": [
-         *         "Dear Hiring Team at Acme Robotics,",
-         *         "I am writing to express my enthusiasm for the AI Platform Engineer role...",
-         *         "Sincerely, Jane Doe"
-         *       ],
-         *       "word_count": 160
-         *     }
-         */
-        CoverLetter: {
-            /**
-             * Paragraphs
-             * @description Sequential paragraphs comprising the tailored cover letter
-             * @example Dear Hiring Team,
-             *
-             *     I am thrilled to apply for the AI Engineer role...
-             * @example Over the past 5 years, I have architected low-latency LLM microservices...
-             * @example Thank you for your consideration. I look forward to speaking.
-             */
-            paragraphs: string[];
-            /**
-             * Word Count
-             * @description Total word count across all paragraphs
-             * @default 0
-             * @example 285
-             */
-            word_count: number;
-            /**
-             * Claims Used
-             * @description Explicit source facts from candidate profile cited in the letter
-             * @example 5 years building LLM microservices
-             * @example Deployed production pipelines on Kubernetes
-             */
-            claims_used?: string[];
         };
         /** Education */
         Education: {
@@ -849,63 +814,6 @@ export interface components {
              */
             passed: boolean;
         };
-        /**
-         * GenerateCoverLetterRequest
-         * @description Request payload for cover letter generation.
-         */
-        GenerateCoverLetterRequest: {
-            /** @description Candidate profile */
-            profile: components["schemas"]["ParsedProfile"];
-            /** @description Target job posting */
-            job: components["schemas"]["JobPosting"];
-            /**
-             * Tone
-             * @description Desired tone of voice (e.g. professional, enthusiastic, conversational)
-             * @default professional
-             * @example professional
-             */
-            tone: string;
-        };
-        /**
-         * GenerateCoverLetterResponse
-         * @description Response containing grounded cover letter.
-         */
-        GenerateCoverLetterResponse: {
-            /** @description Payload data */
-            data: components["schemas"]["CoverLetter"];
-            /**
-             * Warnings
-             * @description Processing warnings and notices
-             */
-            warnings?: string[];
-            /** @description Execution metadata and timing */
-            meta?: components["schemas"]["ApiMeta"];
-        };
-        /**
-         * GenerateInterviewPackRequest
-         * @description Request payload for personalized interview preparation generation.
-         */
-        GenerateInterviewPackRequest: {
-            /** @description Candidate profile */
-            profile: components["schemas"]["ParsedProfile"];
-            /** @description Target job posting */
-            job: components["schemas"]["JobPosting"];
-        };
-        /**
-         * GenerateInterviewPackResponse
-         * @description Response containing customized behavioral and technical interview questions.
-         */
-        GenerateInterviewPackResponse: {
-            /** @description Payload data */
-            data: components["schemas"]["InterviewPack"];
-            /**
-             * Warnings
-             * @description Processing warnings and notices
-             */
-            warnings?: string[];
-            /** @description Execution metadata and timing */
-            meta?: components["schemas"]["ApiMeta"];
-        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -929,61 +837,6 @@ export interface components {
              * Format: date-time
              */
             timestamp?: string;
-        };
-        /**
-         * InterviewPack
-         * @description Comprehensive personalized interview preparation pack for target opportunity.
-         * @example {
-         *       "behavioral": [
-         *         {
-         *           "based_on": "TechCorp experience",
-         *           "question": "Tell me about a time you optimized an LLM pipeline.",
-         *           "star_answer": {
-         *             "action": "Introduced caching and concurrency semaphores.",
-         *             "result": "Latency dropped by 50%.",
-         *             "situation": "Our inference latency was spiking.",
-         *             "task": "Lower P99 latency below 300ms."
-         *           }
-         *         }
-         *       ],
-         *       "questions_to_ask": [
-         *         {
-         *           "question": "How do you handle model evaluations in CI?",
-         *           "rationale": "Shows interest in engineering rigor.",
-         *           "target_audience": "Peer Engineer"
-         *         }
-         *       ],
-         *       "role_specific": [],
-         *       "technical": [
-         *         {
-         *           "answer": "Constrained decoding with Pydantic validation.",
-         *           "difficulty": "medium",
-         *           "question": "How do you enforce structured JSON output?"
-         *         }
-         *       ]
-         *     }
-         */
-        InterviewPack: {
-            /**
-             * Behavioral
-             * @description Behavioral questions with candidate-grounded STAR answers
-             */
-            behavioral?: components["schemas"]["BehavioralQuestion"][];
-            /**
-             * Technical
-             * @description Technical questions tailored to required technologies
-             */
-            technical?: components["schemas"]["TechnicalQuestion"][];
-            /**
-             * Role Specific
-             * @description Role- and domain-specific questions
-             */
-            role_specific?: components["schemas"]["RoleSpecificQuestion"][];
-            /**
-             * Questions To Ask
-             * @description High-signal questions for candidate to ask during interviews
-             */
-            questions_to_ask?: components["schemas"]["QuestionToAsk"][];
         };
         /**
          * JobPosting
@@ -1593,30 +1446,6 @@ export interface components {
             url?: string | null;
         };
         /**
-         * QuestionToAsk
-         * @description Strategic reverse-interview question for the candidate to ask interviewers.
-         */
-        QuestionToAsk: {
-            /**
-             * Question
-             * @description Insightful question demonstrating candidate diligence and curiosity
-             * @example How does the AI engineering team measure and monitor model drift?
-             */
-            question: string;
-            /**
-             * Target Audience
-             * @description Target interviewer role (e.g. Hiring Manager, Peer Engineer)
-             * @example Hiring Manager
-             */
-            target_audience: string;
-            /**
-             * Rationale
-             * @description Strategic purpose and signal conveyed by asking this question
-             * @example Demonstrates maturity in production lifecycle management.
-             */
-            rationale: string;
-        };
-        /**
          * RankRequest
          * @description Request payload for hybrid job ranking against a parsed profile.
          */
@@ -1767,30 +1596,6 @@ export interface components {
             source_fact_ref: string;
         };
         /**
-         * RoleSpecificQuestion
-         * @description Domain and role-specific question addressing the hiring team's unique domain.
-         */
-        RoleSpecificQuestion: {
-            /**
-             * Question
-             * @description Domain-specific scenario or operational question
-             * @example How do you handle schema drifts when ingesting multi-vendor job feeds?
-             */
-            question: string;
-            /**
-             * Answer
-             * @description Pragmatic approach aligned with best practices
-             * @example Implement an adapter pattern with strict validation and dead-letter queues.
-             */
-            answer: string;
-            /**
-             * Context
-             * @description Contextual relevance to the prospective team
-             * @example Core challenge in multi-source job ingestion systems
-             */
-            context: string;
-        };
-        /**
          * SearchJobsResponse
          * @description Response containing aggregated and deduped job listings with source telemetry.
          */
@@ -1872,36 +1677,6 @@ export interface components {
              * @default 0
              */
             duration_ms: number;
-        };
-        /**
-         * StarAnswer
-         * @description Structured STAR framework response formulation.
-         */
-        StarAnswer: {
-            /**
-             * Situation
-             * @description Context and business/engineering setting
-             * @example At TechCorp, our real-time LLM service experienced frequent timeout spikes.
-             */
-            situation: string;
-            /**
-             * Task
-             * @description Specific goal or responsibility owned by the candidate
-             * @example Tasked with diagnosing bottleneck and bringing P99 latency below 300ms.
-             */
-            task: string;
-            /**
-             * Action
-             * @description Key engineering decisions and implementation steps demonstrated
-             * @example Implemented an async connection pool and optimized prompt token serialization.
-             */
-            action: string;
-            /**
-             * Result
-             * @description Quantifiable positive outcome and business impact achieved
-             * @example P99 latency dropped by 55% and server compute costs decreased by 22%.
-             */
-            result: string;
         };
         /**
          * TailorResumeRequest
@@ -1989,30 +1764,6 @@ export interface components {
             fabrication_report?: components["schemas"]["FabricationReport"];
         };
         /**
-         * TechnicalQuestion
-         * @description Targeted technical question based on job requirements and tech stack.
-         */
-        TechnicalQuestion: {
-            /**
-             * Question
-             * @description Technical or architectural interview question
-             * @example How would you enforce structured schema outputs in production LLMs?
-             */
-            question: string;
-            /**
-             * Answer
-             * @description Model comprehensive technical answer demonstrating deep domain expertise
-             * @example Use provider-native JSON schema grammar enforcement and Pydantic validation loops.
-             */
-            answer: string;
-            /**
-             * Difficulty
-             * @description Question complexity: 'easy', 'medium', or 'hard'
-             * @example medium
-             */
-            difficulty: string;
-        };
-        /**
          * UnsupportedClaim
          * @description Specific claim or statement not supported by verified profile facts.
          */
@@ -2025,7 +1776,7 @@ export interface components {
             text: string;
             /**
              * Location
-             * @description Location in the tailored resume or cover letter where the claim appears
+             * @description Location in the tailored resume where the claim appears
              * @example experience[0].bullets[2]
              */
             location: string;
@@ -2497,6 +2248,39 @@ export interface operations {
             };
         };
     };
+    research_company_v1_company_research_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CompanyResearchRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompanyResearchResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     tailor_resume_api_v1_resume_tailor_post: {
         parameters: {
             query?: never;
@@ -2682,72 +2466,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    generate_cover_letter_api_v1_cover_letter_generate_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["GenerateCoverLetterRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["GenerateCoverLetterResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    generate_interview_pack_api_v1_interview_generate_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["GenerateInterviewPackRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["GenerateInterviewPackResponse"];
                 };
             };
             /** @description Validation Error */

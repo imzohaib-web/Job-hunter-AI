@@ -34,12 +34,13 @@ class Settings(BaseSettings):
     llm_max_retries: int = 2
     llm_timeout_seconds: int = 60
 
-    # Job Sources
+    # Job Sources & Company Research
     use_demo_jobs: bool = False
     adzuna_app_id: str = ""
     adzuna_app_key: str = ""
     adzuna_country: str = "us"
     rapidapi_key: str = ""
+    serper_api_key: str = ""
     greenhouse_boards: str = "airbnb,stripe,github,cloudflare,datadog"
     lever_boards: str = "netflix,spotify,palantir,figma"
 

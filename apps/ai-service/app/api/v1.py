@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import time
 
 from fastapi import APIRouter, File, HTTPException, Response, UploadFile, status
@@ -14,10 +15,6 @@ from app.schemas.envelopes import (
     CompanyResearchRequest,
     CompanyResearchResponse,
     ExportResumeDocxRequest,
-    GenerateCoverLetterRequest,
-    GenerateCoverLetterResponse,
-    GenerateInterviewPackRequest,
-    GenerateInterviewPackResponse,
     MatchJobRequest,
     MatchJobResponse,
     ParseResumeResponse,
@@ -28,6 +25,7 @@ from app.schemas.envelopes import (
 )
 from app.schemas.job import JobQuery
 from app.schemas.match import JobWithEmbedding, RankRequest
+from app.services.company_research import CompanyResearchAgent, SSRFSecurityError
 from app.services.job_sources import JobSourceAggregator
 from app.services.ranking import HybridRankingAgent
 from app.services.tailoring import (
@@ -38,6 +36,7 @@ from app.services.tailoring import (
 from app.services.tailoring.schemas import ResumeRewriteLLMOutput
 
 router = APIRouter(tags=["AI Operations"])
+logger = logging.getLogger("jobpilot.api.v1")
 
 
 @router.post(
@@ -192,14 +191,41 @@ async def batch_match_jobs(payload: BatchMatchRequest) -> BatchMatchResponse:
 
 
 @router.post(
+    "/v1/company-research",
+    response_model=CompanyResearchResponse,
+    summary="Synthesize company intelligence, tech stack, and culture from public web and search",
+)
+@router.post(
     "/api/v1/company/research",
     response_model=CompanyResearchResponse,
-    summary="Generate intelligence and culture signals for hiring company",
+    summary="Synthesize company intelligence, tech stack, and culture from public web and search",
 )
 async def research_company(payload: CompanyResearchRequest) -> CompanyResearchResponse:
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="Company research agent pipeline implemented in upcoming prompt.",
+    start_time = time.perf_counter()
+    agent = CompanyResearchAgent()
+    try:
+        insight = await agent.research(payload)
+    except SSRFSecurityError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"code": "SSRF_BLOCKED", "message": str(exc)},
+        ) from exc
+    except Exception as exc:
+        logger.exception("Company research failed: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "code": "RESEARCH_FAILED",
+                "message": f"Failed to complete company research: {exc}",
+            },
+        ) from exc
+
+    duration_ms = (time.perf_counter() - start_time) * 1000
+    warnings: list[str] = list(insight.limitations)
+    return CompanyResearchResponse(
+        data=insight,
+        warnings=warnings,
+        meta=ApiMeta(duration_ms=duration_ms),
     )
 
 
@@ -232,12 +258,12 @@ async def tailor_resume(payload: TailorResumeRequest) -> TailorResumeResponse:
 @router.post(
     "/v1/check-fabrication",
     response_model=CheckFabricationResponse,
-    summary="Audit tailored resume or cover letter against candidate profile",
+    summary="Audit tailored resume against candidate profile",
 )
 @router.post(
     "/api/v1/resume/check-fabrication",
     response_model=CheckFabricationResponse,
-    summary="Audit tailored resume or cover letter against candidate profile",
+    summary="Audit tailored resume against candidate profile",
 )
 async def check_fabrication(payload: CheckFabricationRequest) -> CheckFabricationResponse:
     start_time = time.perf_counter()
@@ -277,30 +303,4 @@ async def export_resume_docx(payload: ExportResumeDocxRequest) -> Response:
         headers={
             "Content-Disposition": f'attachment; filename="{filename}"',
         },
-    )
-
-
-@router.post(
-    "/api/v1/cover-letter/generate",
-    response_model=GenerateCoverLetterResponse,
-    summary="Generate grounded, personalized cover letter for target role",
-)
-async def generate_cover_letter(payload: GenerateCoverLetterRequest) -> GenerateCoverLetterResponse:
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="Cover letter agent pipeline implemented in upcoming prompt.",
-    )
-
-
-@router.post(
-    "/api/v1/interview/generate",
-    response_model=GenerateInterviewPackResponse,
-    summary="Generate behavioral and technical interview preparation pack",
-)
-async def generate_interview_pack(
-    payload: GenerateInterviewPackRequest,
-) -> GenerateInterviewPackResponse:
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="Interview preparation agent pipeline implemented in upcoming prompt.",
     )
