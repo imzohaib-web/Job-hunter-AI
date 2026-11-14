@@ -32,4 +32,3 @@ __all__ = [
     "is_restricted_ip",
     "validate_url_and_resolve_ip",
 ]
-

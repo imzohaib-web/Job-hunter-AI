@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from app.schemas.company import CompanyInsight
+from app.schemas.cover_letter import CoverLetter
 from app.schemas.envelopes import (
     ApiMeta,
     ApiResponse,
@@ -21,7 +22,28 @@ from app.schemas.envelopes import (
     TailorResumeResponse,
 )
 from app.schemas.fabrication import FabricationReport, UnsupportedClaim
+from app.schemas.graph import (
+    DiscoveryGraphRequest,
+    DiscoveryGraphResponse,
+    GraphRunSnapshot,
+    GraphType,
+    KillGraphResponse,
+    NodeStatus,
+    PrepareApplicationRequest,
+    PrepareApplicationResponse,
+    ProgressEvent,
+    ResumeGraphResponse,
+    RunStatus,
+)
 from app.schemas.health import HealthResponse
+from app.schemas.interview import (
+    BehavioralQuestion,
+    InterviewPack,
+    QuestionToAsk,
+    RoleSpecificQuestion,
+    StarAnswer,
+    TechnicalQuestion,
+)
 from app.schemas.job import JobPosting, JobQuery, SearchJobsResult, SourceStatus
 from app.schemas.match import (
     CandidatePreferences,
@@ -57,6 +79,7 @@ __all__ = [
     "AtsSectionCheck",
     "BatchMatchRequest",
     "BatchMatchResponse",
+    "BehavioralQuestion",
     "CandidatePreferences",
     "Certification",
     "CheckFabricationRequest",
@@ -64,36 +87,53 @@ __all__ = [
     "CompanyInsight",
     "CompanyResearchRequest",
     "CompanyResearchResponse",
+    "CoverLetter",
+    "DiscoveryGraphRequest",
+    "DiscoveryGraphResponse",
     "Education",
     "ExportResumeDocxRequest",
     "FabricationReport",
+    "GraphRunSnapshot",
+    "GraphType",
     "HealthResponse",
+    "InterviewPack",
     "JobPosting",
     "JobQuery",
     "JobWithEmbedding",
     "KeywordPlanItem",
+    "KillGraphResponse",
     "LanguageProficiency",
     "MatchJobRequest",
     "MatchJobResponse",
     "MatchResult",
     "MatchScoreBreakdown",
+    "NodeStatus",
     "ParsedProfile",
     "ParseResumeRequest",
     "ParseResumeResponse",
+    "PrepareApplicationRequest",
+    "PrepareApplicationResponse",
     "ProfileSkill",
+    "ProgressEvent",
     "Project",
+    "QuestionToAsk",
     "RankRequest",
     "RankResponse",
     "RankResponseData",
     "RankedJobItem",
     "RankingWeights",
     "ResumeChange",
+    "ResumeGraphResponse",
+    "RoleSpecificQuestion",
+    "RunStatus",
     "SearchJobsResponse",
     "SearchJobsResult",
     "SourceStatus",
+    "StarAnswer",
     "TailorResumeRequest",
     "TailorResumeResponse",
     "TailoredResume",
+    "TechnicalQuestion",
     "UnsupportedClaim",
     "WorkExperience",
 ]

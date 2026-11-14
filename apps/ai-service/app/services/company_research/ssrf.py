@@ -9,35 +9,35 @@ from collections.abc import Sequence
 logger = logging.getLogger("jobpilot.ssrf")
 
 RESTRICTED_IPV4_NETWORKS: Sequence[ipaddress.IPv4Network] = [
-    ipaddress.IPv4Network("0.0.0.0/8"),       # Current network / "This" host
-    ipaddress.IPv4Network("10.0.0.0/8"),      # Private-use (RFC 1918)
-    ipaddress.IPv4Network("100.64.0.0/10"),   # Shared address space / CGNAT (RFC 6598)
-    ipaddress.IPv4Network("127.0.0.0/8"),     # Loopback (RFC 1122)
+    ipaddress.IPv4Network("0.0.0.0/8"),  # Current network / "This" host
+    ipaddress.IPv4Network("10.0.0.0/8"),  # Private-use (RFC 1918)
+    ipaddress.IPv4Network("100.64.0.0/10"),  # Shared address space / CGNAT (RFC 6598)
+    ipaddress.IPv4Network("127.0.0.0/8"),  # Loopback (RFC 1122)
     ipaddress.IPv4Network("169.254.0.0/16"),  # Link-local / Cloud metadata (RFC 3927)
-    ipaddress.IPv4Network("172.16.0.0/12"),   # Private-use (RFC 1918)
-    ipaddress.IPv4Network("192.0.0.0/24"),    # IETF Protocol Assignments (RFC 6890)
-    ipaddress.IPv4Network("192.0.2.0/24"),    # Documentation TEST-NET-1 (RFC 5737)
+    ipaddress.IPv4Network("172.16.0.0/12"),  # Private-use (RFC 1918)
+    ipaddress.IPv4Network("192.0.0.0/24"),  # IETF Protocol Assignments (RFC 6890)
+    ipaddress.IPv4Network("192.0.2.0/24"),  # Documentation TEST-NET-1 (RFC 5737)
     ipaddress.IPv4Network("192.168.0.0/16"),  # Private-use (RFC 1918)
-    ipaddress.IPv4Network("198.18.0.0/15"),   # Benchmarking (RFC 2544)
-    ipaddress.IPv4Network("198.51.100.0/24"), # Documentation TEST-NET-2 (RFC 5737)
+    ipaddress.IPv4Network("198.18.0.0/15"),  # Benchmarking (RFC 2544)
+    ipaddress.IPv4Network("198.51.100.0/24"),  # Documentation TEST-NET-2 (RFC 5737)
     ipaddress.IPv4Network("203.0.113.0/24"),  # Documentation TEST-NET-3 (RFC 5737)
-    ipaddress.IPv4Network("224.0.0.0/4"),     # Multicast (RFC 5771)
-    ipaddress.IPv4Network("240.0.0.0/4"),     # Reserved for future use (RFC 1112)
-    ipaddress.IPv4Network("255.255.255.255/32"), # Limited broadcast
+    ipaddress.IPv4Network("224.0.0.0/4"),  # Multicast (RFC 5771)
+    ipaddress.IPv4Network("240.0.0.0/4"),  # Reserved for future use (RFC 1112)
+    ipaddress.IPv4Network("255.255.255.255/32"),  # Limited broadcast
 ]
 
 RESTRICTED_IPV6_NETWORKS: Sequence[ipaddress.IPv6Network] = [
-    ipaddress.IPv6Network("::1/128"),         # Loopback
-    ipaddress.IPv6Network("::/128"),          # Unspecified
-    ipaddress.IPv6Network("::ffff:0:0/96"),   # IPv4-mapped (handled individually)
-    ipaddress.IPv6Network("64:ff9b::/96"),    # IPv4/IPv6 translation
-    ipaddress.IPv6Network("100::/64"),        # Discard-only prefix (RFC 6666)
-    ipaddress.IPv6Network("2001:db8::/32"),   # Documentation
-    ipaddress.IPv6Network("2002::/16"),       # 6to4 (check embedded IPv4)
-    ipaddress.IPv6Network("fc00::/7"),        # Unique Local Address (ULA, RFC 4193)
-    ipaddress.IPv6Network("fe80::/10"),       # Link-local unicast
-    ipaddress.IPv6Network("fec0::/10"),       # Site-local (deprecated)
-    ipaddress.IPv6Network("ff00::/8"),        # Multicast
+    ipaddress.IPv6Network("::1/128"),  # Loopback
+    ipaddress.IPv6Network("::/128"),  # Unspecified
+    ipaddress.IPv6Network("::ffff:0:0/96"),  # IPv4-mapped (handled individually)
+    ipaddress.IPv6Network("64:ff9b::/96"),  # IPv4/IPv6 translation
+    ipaddress.IPv6Network("100::/64"),  # Discard-only prefix (RFC 6666)
+    ipaddress.IPv6Network("2001:db8::/32"),  # Documentation
+    ipaddress.IPv6Network("2002::/16"),  # 6to4 (check embedded IPv4)
+    ipaddress.IPv6Network("fc00::/7"),  # Unique Local Address (ULA, RFC 4193)
+    ipaddress.IPv6Network("fe80::/10"),  # Link-local unicast
+    ipaddress.IPv6Network("fec0::/10"),  # Site-local (deprecated)
+    ipaddress.IPv6Network("ff00::/8"),  # Multicast
 ]
 
 BLOCKED_HOSTNAME_SUFFIXES: tuple[str, ...] = (
@@ -93,9 +93,9 @@ def is_restricted_ip(ip: ipaddress.IPv4Address | ipaddress.IPv6Address) -> tuple
         if ip.is_reserved:
             return True, "IPv6 reserved address"
 
-        for net in RESTRICTED_IPV6_NETWORKS:
-            if ip in net:
-                return True, f"IPv6 address in restricted range {net}"
+        for v6_net in RESTRICTED_IPV6_NETWORKS:
+            if ip in v6_net:
+                return True, f"IPv6 address in restricted range {v6_net}"
 
         if not ip.is_global:
             return True, "IPv6 address is not globally routable"
@@ -120,9 +120,9 @@ def is_restricted_ip(ip: ipaddress.IPv4Address | ipaddress.IPv6Address) -> tuple
     if str(ip) == "169.254.169.254":
         return True, "Cloud instance metadata address"
 
-    for net in RESTRICTED_IPV4_NETWORKS:
-        if ip in net:
-            return True, f"IPv4 address in restricted range {net}"
+    for v4_net in RESTRICTED_IPV4_NETWORKS:
+        if ip in v4_net:
+            return True, f"IPv4 address in restricted range {v4_net}"
 
     if not ip.is_global:
         return True, "IPv4 address is not globally routable"

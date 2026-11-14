@@ -148,8 +148,9 @@ class CompanyResearchAgent:
         )
 
         # Step 5: LLM Structured Synthesis
+        prompt_full = f"{COMPANY_RESEARCH_SYSTEM_PROMPT}\n\n{COMPANY_RESEARCH_USER_TEMPLATE}"
         llm_output = await self._llm_client.generate_structured(
-            prompt_template=COMPANY_RESEARCH_USER_TEMPLATE,
+            prompt_template=prompt_full,
             variables={
                 "company_name_data": wrapped_company_name,
                 "website_content_data": wrapped_website,
@@ -157,7 +158,6 @@ class CompanyResearchAgent:
                 "raw_context_data": wrapped_context,
             },
             output_model=CompanyResearchLLMOutput,
-            system_instruction=COMPANY_RESEARCH_SYSTEM_PROMPT,
             task_name="company_research",
             temperature=0.1,
         )

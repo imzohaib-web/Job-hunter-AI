@@ -13,4 +13,3 @@ __all__ = [
     "ResumeTailorAgent",
     "build_docx_resume",
 ]
-

@@ -88,7 +88,10 @@ async def test_agent_full_pipeline_with_mock_llm_and_web() -> None:
         raw_context="Known for modern cloud tools.",
     )
 
-    with patch("socket.getaddrinfo", return_value=[(2, 1, 6, "", ("93.184.216.34", 443))]):
+    with patch(
+        "app.services.company_research.ssrf.socket.getaddrinfo",
+        return_value=[(2, 1, 6, "", ("93.184.216.34", 443))],
+    ):
         insight = await agent.research(request)
 
     # Validate insight fields
@@ -153,7 +156,10 @@ async def test_agent_serper_disabled_runs_website_only() -> None:
         website_url="https://tech.org",
     )
 
-    with patch("socket.getaddrinfo", return_value=[(2, 1, 6, "", ("93.184.216.34", 443))]):
+    with patch(
+        "app.services.company_research.ssrf.socket.getaddrinfo",
+        return_value=[(2, 1, 6, "", ("93.184.216.34", 443))],
+    ):
         insight = await agent.research(request)
 
     assert insight.company_name == "Tech Org"
@@ -208,7 +214,10 @@ async def test_agent_serper_failure_degrades_gracefully() -> None:
         website_url="https://alpha.io",
     )
 
-    with patch("socket.getaddrinfo", return_value=[(2, 1, 6, "", ("93.184.216.34", 443))]):
+    with patch(
+        "app.services.company_research.ssrf.socket.getaddrinfo",
+        return_value=[(2, 1, 6, "", ("93.184.216.34", 443))],
+    ):
         insight = await agent.research(request)
 
     assert insight.company_name == "Alpha IO"
@@ -238,7 +247,10 @@ async def test_agent_insufficient_data_returns_low_confidence_fallback() -> None
         website_url="https://ghostcorp-offline.xyz",
     )
 
-    with patch("socket.getaddrinfo", return_value=[(2, 1, 6, "", ("93.184.216.34", 443))]):
+    with patch(
+        "app.services.company_research.ssrf.socket.getaddrinfo",
+        return_value=[(2, 1, 6, "", ("93.184.216.34", 443))],
+    ):
         insight = await agent.research(request)
 
     # When all sources fail, LLM must not be called to hallucinate
@@ -340,7 +352,10 @@ async def test_agent_robots_disallowed_handles_gracefully() -> None:
         website_url="https://secret-robots.com/about",
     )
 
-    with patch("socket.getaddrinfo", return_value=[(2, 1, 6, "", ("93.184.216.34", 443))]):
+    with patch(
+        "app.services.company_research.ssrf.socket.getaddrinfo",
+        return_value=[(2, 1, 6, "", ("93.184.216.34", 443))],
+    ):
         insight = await agent.research(request)
 
     assert any("Crawling disallowed by robots.txt" in lim for lim in insight.limitations)

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Tag
 
 
 def extract_company_text_from_html(html_content: str, max_chars: int = 6000) -> str:
@@ -54,7 +54,7 @@ def extract_company_text_from_html(html_content: str, max_chars: int = 6000) -> 
     meta_desc = soup.find("meta", attrs={"name": re.compile(r"^description$", re.I)}) or soup.find(
         "meta", attrs={"property": re.compile(r"^og:description$", re.I)}
     )
-    if meta_desc and meta_desc.get("content"):
+    if isinstance(meta_desc, Tag) and meta_desc.get("content"):
         desc_content = str(meta_desc.get("content", "")).strip()
         if desc_content:
             extracted_parts.append(f"Overview: {desc_content}")
