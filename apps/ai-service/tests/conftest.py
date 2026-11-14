@@ -1,4 +1,11 @@
 import os
+import sys
+
+# Prevent Windows C-extension / protobuf collisions under Python 3.13
+if "tensorflow" not in sys.modules:
+    sys.modules["tensorflow"] = None
+if "pyarrow" not in sys.modules:
+    sys.modules["pyarrow"] = None
 
 # Ensure settings/app import succeeds before fixtures run.
 os.environ.setdefault("AI_SERVICE_KEY", "test-ai-service-key")

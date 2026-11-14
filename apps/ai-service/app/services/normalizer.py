@@ -235,9 +235,7 @@ def compute_field_confidences(profile: ParsedProfile, raw_text: str) -> dict[str
 
     # 4. Location
     loc_parts = (
-        [part.strip().lower() for part in profile.location.split(",")]
-        if profile.location
-        else []
+        [part.strip().lower() for part in profile.location.split(",")] if profile.location else []
     )
     if profile.location and any(part in raw_lower for part in loc_parts):
         confidences["location"] = 0.90
@@ -275,9 +273,7 @@ def compute_field_confidences(profile: ParsedProfile, raw_text: str) -> dict[str
 
     # 8. Education
     if profile.education:
-        edu_grounded = sum(
-            1 for edu in profile.education if edu.institution.lower() in raw_lower
-        )
+        edu_grounded = sum(1 for edu in profile.education if edu.institution.lower() in raw_lower)
         ratio = edu_grounded / len(profile.education)
         confidences["education"] = round(0.50 + (0.45 * ratio), 2)
     else:

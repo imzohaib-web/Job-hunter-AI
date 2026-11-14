@@ -101,9 +101,7 @@ def extract_text_from_pdf(content: bytes) -> ExtractionResult:
         try:
             import pymupdf
 
-            with pymupdf.open(
-                stream=content, filetype="pdf"
-            ) as doc:  # type: ignore[no-untyped-call]
+            with pymupdf.open(stream=content, filetype="pdf") as doc:  # type: ignore[no-untyped-call]
                 pages_count = len(doc)
                 pymupdf_texts: list[str] = []
                 for page in doc:
@@ -119,8 +117,10 @@ def extract_text_from_pdf(content: bytes) -> ExtractionResult:
                         right = [b for b in blocks if b[0] >= width * 0.45]
                         left_sorted = sorted(left, key=lambda b: (b[1], b[0]))
                         right_sorted = sorted(right, key=lambda b: (b[1], b[0]))
-                        col_text = "\n".join(b[4] for b in left_sorted) + "\n\n" + "\n".join(
-                            b[4] for b in right_sorted
+                        col_text = (
+                            "\n".join(b[4] for b in left_sorted)
+                            + "\n\n"
+                            + "\n".join(b[4] for b in right_sorted)
                         )
                         pymupdf_texts.append(col_text)
                     else:
@@ -155,9 +155,7 @@ def extract_text_from_pdf(content: bytes) -> ExtractionResult:
                 import pymupdf
                 from PIL import Image
 
-                with pymupdf.open(
-                stream=content, filetype="pdf"
-            ) as doc:  # type: ignore[no-untyped-call]
+                with pymupdf.open(stream=content, filetype="pdf") as doc:  # type: ignore[no-untyped-call]
                     for page in doc:
                         pix = page.get_pixmap(dpi=200)
                         img = Image.open(io.BytesIO(pix.tobytes("png")))

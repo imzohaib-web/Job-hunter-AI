@@ -15,7 +15,8 @@ RUN apt-get update \
 WORKDIR /app
 
 COPY apps/ai-service/requirements.txt ./requirements.txt
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --upgrade pip \
+  && pip install --no-cache-dir --default-timeout=1000 --retries=10 -r requirements.txt
 
 COPY apps/ai-service/app ./app
 

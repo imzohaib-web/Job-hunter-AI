@@ -34,9 +34,26 @@ class Settings(BaseSettings):
     llm_max_retries: int = 2
     llm_timeout_seconds: int = 60
 
+    # Job Sources
+    use_demo_jobs: bool = False
+    adzuna_app_id: str = ""
+    adzuna_app_key: str = ""
+    adzuna_country: str = "us"
+    rapidapi_key: str = ""
+    greenhouse_boards: str = "airbnb,stripe,github,cloudflare,datadog"
+    lever_boards: str = "netflix,spotify,palantir,figma"
+
     @property
     def provider_order_list(self) -> list[str]:
         return [p.strip().lower() for p in self.llm_provider_order.split(",") if p.strip()]
+
+    @property
+    def greenhouse_boards_list(self) -> list[str]:
+        return [b.strip().lower() for b in self.greenhouse_boards.split(",") if b.strip()]
+
+    @property
+    def lever_boards_list(self) -> list[str]:
+        return [b.strip().lower() for b in self.lever_boards.split(",") if b.strip()]
 
 
 def load_settings(*, env_file: str | None = ".env") -> Settings:

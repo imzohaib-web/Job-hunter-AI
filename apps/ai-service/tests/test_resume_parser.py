@@ -110,12 +110,8 @@ def mock_parsed_profile() -> ParsedProfile:
                 technologies=["Python", "OpenAI"],
             )
         ],
-        certifications=[
-            Certification(name="AWS Certified Solutions Architect - Associate")
-        ],
-        languages=[
-            LanguageProficiency(language="English", proficiency="native")
-        ],
+        certifications=[Certification(name="AWS Certified Solutions Architect - Associate")],
+        languages=[LanguageProficiency(language="English", proficiency="native")],
         field_confidence={},
     )
 

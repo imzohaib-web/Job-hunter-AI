@@ -44,8 +44,26 @@ module = [
     "pytesseract.*",
     "PIL",
     "PIL.*",
+    "rank_bm25",
+    "rank_bm25.*",
 ]
 ignore_missing_imports = true
+disallow_untyped_calls = false
+disallow_untyped_defs = false
+
+[[tool.mypy.overrides]]
+module = [
+    "sentence_transformers",
+    "sentence_transformers.*",
+    "torch",
+    "torch.*",
+    "transformers",
+    "transformers.*",
+    "docx",
+    "docx.*",
+]
+ignore_missing_imports = true
+follow_imports = "skip"
 disallow_untyped_calls = false
 disallow_untyped_defs = false
 

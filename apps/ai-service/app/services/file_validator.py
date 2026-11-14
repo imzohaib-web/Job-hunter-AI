@@ -101,7 +101,7 @@ def validate_resume_file(
             page_breaks = 0
             for p in doc.paragraphs:
                 for run in p.runs:
-                    if "w:type=\"page\"" in run._r.xml or "lastRenderedPageBreak" in run._r.xml:
+                    if 'w:type="page"' in run._r.xml or "lastRenderedPageBreak" in run._r.xml:
                         page_breaks += 1
             # Rough density check: standard 10-page resume has < 300 paragraphs
             if page_breaks > MAX_PAGE_COUNT or len(doc.paragraphs) > 400:

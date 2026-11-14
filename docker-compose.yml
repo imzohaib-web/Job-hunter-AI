@@ -43,7 +43,7 @@ services:
       APP_ENV: development
       HOST: 0.0.0.0
       PORT: 8000
-      AI_SERVICE_KEY: ${AI_SERVICE_KEY:-change-me-shared-service-key}
+      AI_SERVICE_KEY: ${AI_SERVICE_KEY:?AI_SERVICE_KEY must be set}
     networks:
       - jobpilot
     expose:
@@ -68,7 +68,7 @@ services:
       MONGODB_URI: mongodb://mongo:27017/jobpilot
       REDIS_URL: redis://redis:6379
       AI_SERVICE_URL: http://ai-service:8000
-      AI_SERVICE_KEY: ${AI_SERVICE_KEY:-change-me-shared-service-key}
+      AI_SERVICE_KEY: ${AI_SERVICE_KEY:?AI_SERVICE_KEY must be set}
       CORS_ORIGIN: http://localhost:5173
     ports:
       - "3001:3001"

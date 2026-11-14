@@ -92,11 +92,7 @@ def segment_resume_sections(raw_text: str) -> dict[str, str]:
         sections[current_section].append(stripped)
 
     # Join lines for each non-empty section
-    return {
-        sec: "\n".join(content)
-        for sec, content in sections.items()
-        if content
-    }
+    return {sec: "\n".join(content) for sec, content in sections.items() if content}
 
 
 def format_segmented_chunks(sections: dict[str, str]) -> str:
