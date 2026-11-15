@@ -35,6 +35,7 @@ coverage.xml
 # Data / uploads
 data/
 uploads/
+test-uploads/
 *.db
 *.sqlite
 

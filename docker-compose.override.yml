@@ -11,3 +11,5 @@ services:
   ai-service:
     ports:
       - "8000:8000"
+    volumes:
+      - ./apps/ai-service/app:/app/app

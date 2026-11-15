@@ -1,10 +1,38 @@
 import type { components, paths } from "./api-types.js";
 
 export type {
+  AnalyticsSummary,
+  ApiErrorDetail,
+  ApiErrorResponse,
+  ApplicationItem,
+  ApplicationStatus,
+  AuthResponse,
+  AuthUser,
   DeepHealthChecks,
   DeepHealthStatus,
   DependencyCheckStatus,
+  GroupedApplications,
   HealthStatus,
+  JobEntity,
+  JobPreferences,
+  JobSalary,
+  LoginPayload,
+  LogoutResponse,
+  MatchesPagination,
+  MatchesResponse,
+  MatchEntity,
+  OriginalFileRef,
+  RegisterPayload,
+  ResumeDetail,
+  ResumeEntity,
+  ResumeListItem,
+  ResumeStatus,
+  ScoreBreakdown,
+  SearchDiagnostics,
+  SearchProgressEvent,
+  SearchRunEntity,
+  SourceStatusItem,
+  UserQuotaCounters,
 } from "./types.js";
 
 export type { components, paths };
