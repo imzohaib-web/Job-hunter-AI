@@ -1,0 +1,71 @@
+import { Bot, CheckCircle2, WifiOff } from "lucide-react";
+import { useLocation } from "react-router-dom";
+import { ThemeToggle } from "@/components/layout/ThemeToggle";
+import { UserMenu } from "@/components/layout/UserMenu";
+import { useHealthQuery } from "@/hooks/useApi";
+
+function getPageTitle(pathname: string): string {
+  if (pathname === "/") return "Dashboard";
+  if (pathname.startsWith("/jobs")) return "Job Matches";
+  if (pathname.startsWith("/applications")) return "Application Pipeline";
+  if (pathname.startsWith("/profile")) return "Profile & Resume";
+  if (pathname.startsWith("/analytics")) return "Analytics & Insights";
+  return "JobPilot";
+}
+
+export function AppHeader() {
+  const location = useLocation();
+  const pageTitle = getPageTitle(location.pathname);
+  const { data: health, isError } = useHealthQuery();
+
+  return (
+    <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b bg-card/80 backdrop-blur px-4 sm:px-6">
+      {/* Left side: Mobile brand / Desktop section title */}
+      <div className="flex items-center gap-3">
+        <div className="flex md:hidden items-center gap-2">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+            <Bot className="h-4 w-4" />
+          </div>
+          <span className="font-bold text-sm">JobPilot</span>
+        </div>
+
+        <div className="hidden md:block">
+          <h1 className="text-lg font-semibold tracking-tight text-foreground">
+            {pageTitle}
+          </h1>
+        </div>
+      </div>
+
+      {/* Right side: Health, Theme toggle, User menu */}
+      <div className="flex items-center gap-2 sm:gap-3">
+        {/* Subtle API Health Dot */}
+        <div
+          title={
+            isError
+              ? "API Offline"
+              : health?.status === "ok"
+                ? "API Connected"
+                : "Checking API"
+          }
+          className="flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] text-muted-foreground bg-background"
+        >
+          {isError ? (
+            <>
+              <WifiOff className="h-3 w-3 text-destructive" />
+              <span className="hidden sm:inline">Offline</span>
+            </>
+          ) : (
+            <>
+              <CheckCircle2 className="h-3 w-3 text-emerald-500" />
+              <span className="hidden sm:inline">System Healthy</span>
+            </>
+          )}
+        </div>
+
+        <ThemeToggle />
+        <div className="h-4 w-px bg-border" />
+        <UserMenu />
+      </div>
+    </header>
+  );
+}

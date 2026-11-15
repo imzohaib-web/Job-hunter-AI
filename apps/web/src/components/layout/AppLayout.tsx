@@ -1,57 +1,32 @@
-import {
-  BarChart3,
-  Briefcase,
-  KanbanSquare,
-  LayoutDashboard,
-  UserRound,
-} from "lucide-react";
-import { NavLink, Outlet } from "react-router-dom";
-import { HealthBanner } from "@/components/HealthBanner";
-import { cn } from "@/lib/utils";
-
-const navItems = [
-  { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true },
-  { to: "/jobs", label: "Jobs", icon: Briefcase },
-  { to: "/applications", label: "Applications", icon: KanbanSquare },
-  { to: "/profile", label: "Profile", icon: UserRound },
-  { to: "/analytics", label: "Analytics", icon: BarChart3 },
-] as const;
+import { Outlet } from "react-router-dom";
+import { ErrorBoundary } from "@/components/feedback/ErrorBoundary";
+import { Toaster } from "@/components/feedback/Toaster";
+import { AppHeader } from "@/components/layout/AppHeader";
+import { AppSidebar } from "@/components/layout/AppSidebar";
+import { MobileNav } from "@/components/layout/MobileNav";
 
 export function AppLayout() {
   return (
-    <div className="flex min-h-screen flex-col">
-      <HealthBanner />
-      <div className="flex flex-1">
-        <aside className="flex w-56 shrink-0 flex-col border-r bg-white">
-          <div className="border-b px-4 py-4">
-            <p className="text-lg font-semibold tracking-tight text-primary">JobPilot</p>
-            <p className="text-xs text-muted-foreground">AI job-hunt assistant</p>
-          </div>
-          <nav className="flex flex-col gap-1 p-2">
-            {navItems.map(({ to, label, icon: Icon, ...rest }) => (
-              <NavLink
-                key={to}
-                to={to}
-                end={"end" in rest ? rest.end : false}
-                className={({ isActive }) =>
-                  cn(
-                    "flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors",
-                    isActive
-                      ? "bg-primary/10 font-medium text-primary"
-                      : "text-muted-foreground hover:bg-muted hover:text-foreground",
-                  )
-                }
-              >
-                <Icon className="h-4 w-4" />
-                {label}
-              </NavLink>
-            ))}
-          </nav>
-        </aside>
-        <main className="flex-1 overflow-auto p-6">
-          <Outlet />
+    <div className="flex min-h-screen bg-background text-foreground">
+      {/* Desktop sidebar */}
+      <AppSidebar />
+
+      {/* Main column */}
+      <div className="flex flex-1 flex-col overflow-hidden pb-16 md:pb-0">
+        <AppHeader />
+
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+          <ErrorBoundary>
+            <Outlet />
+          </ErrorBoundary>
         </main>
       </div>
+
+      {/* Mobile bottom nav */}
+      <MobileNav />
+
+      {/* Global toasts */}
+      <Toaster />
     </div>
   );
 }
