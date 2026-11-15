@@ -61,3 +61,31 @@ export async function listMatches(
     },
   });
 }
+
+export async function getMatchById(
+  req: Request<{ id: string }>,
+  res: Response,
+): Promise<void> {
+  const userId = req.user?.id;
+  if (!userId) {
+    throw new AppError(401, "UNAUTHORIZED", "Authentication required");
+  }
+
+  const { id } = req.params;
+  if (!Types.ObjectId.isValid(id)) {
+    throw new AppError(400, "INVALID_ID", "Invalid match id");
+  }
+
+  const match = await Match.findOne({
+    _id: id,
+    userId: new Types.ObjectId(userId),
+  })
+    .populate("jobId")
+    .lean();
+
+  if (!match) {
+    throw new AppError(404, "MATCH_NOT_FOUND", "Match not found");
+  }
+
+  res.status(200).json({ data: match });
+}

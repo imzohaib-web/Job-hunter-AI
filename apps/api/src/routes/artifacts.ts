@@ -1,5 +1,10 @@
 import { Router } from "express";
-import { approveChanges, exportArtifact } from "../controllers/artifactController.js";
+import {
+  approveChanges,
+  exportArtifact,
+  getArtifactById,
+  getArtifacts,
+} from "../controllers/artifactController.js";
 import { requireAuth } from "../middleware/auth.js";
 import { validate } from "../middleware/validate.js";
 import {
@@ -12,6 +17,8 @@ export const artifactRouter = Router();
 
 artifactRouter.use(requireAuth);
 
+artifactRouter.get("/", asyncHandler(getArtifacts));
+artifactRouter.get("/:id", asyncHandler(getArtifactById));
 artifactRouter.patch(
   "/:id/approve-changes",
   validate({ body: approveChangesSchema }),

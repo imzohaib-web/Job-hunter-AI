@@ -1,16 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
-  AnalyticsSummary,
-  ApplicationItem,
   AuthResponse,
   AuthUser,
   DeepHealthStatus,
-  GroupedApplications,
   HealthStatus,
   JobEntity,
   LoginPayload,
   LogoutResponse,
   MatchesResponse,
+  MatchEntity,
   ParsedProfile,
   RegisterPayload,
   ResumeEntity,
@@ -33,6 +31,10 @@ export const queryKeys = {
   searches: ["searches"] as const,
   search: (id: string) => ["searches", id] as const,
   matches: (params?: Record<string, unknown>) => ["matches", params] as const,
+  match: (id: string) => ["matches", "single", id] as const,
+  artifacts: (matchId?: string) => ["artifacts", matchId] as const,
+  artifact: (id: string) => ["artifacts", "detail", id] as const,
+  run: (id: string) => ["runs", id] as const,
   applications: ["applications"] as const,
   application: (id: string) => ["applications", id] as const,
   analyticsSummary: ["analytics", "summary"] as const,
@@ -354,15 +356,58 @@ export function useMatchesQuery(params?: MatchesQueryParams) {
   });
 }
 
+export interface ArtifactEntity {
+  _id: string;
+  userId: string;
+  matchId: string;
+  type: "tailored_resume" | "company_insight" | "cover_letter" | "interview_pack";
+  content: Record<string, unknown>;
+  fabricationReport?: Record<string, unknown> | null;
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DecisionItem {
+  id?: string;
+  section?: string;
+  index?: number;
+  accepted: boolean;
+}
+
+export interface ApproveChangesPayload {
+  approvedChangeIds?: string[];
+  decisions?: DecisionItem[];
+}
+
+export interface PrepareApplicationResult {
+  runId: string;
+  status: string;
+  matchId: string;
+}
+
+export function useSingleMatchQuery(matchId?: string) {
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+
+  return useQuery({
+    queryKey: queryKeys.match(matchId || ""),
+    queryFn: async (): Promise<MatchEntity> => {
+      const res = await apiClient.get<{ data: MatchEntity }>(`/matches/${matchId}`);
+      return res.data.data;
+    },
+    enabled: isAuthenticated && Boolean(matchId),
+  });
+}
+
 export function usePrepareApplicationMutation() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (matchId: string) => {
-      const res = await apiClient.post<{ data: { artifacts: unknown[]; run: unknown } }>(
+    mutationFn: async (matchId: string): Promise<PrepareApplicationResult> => {
+      const res = await apiClient.post<{ data: PrepareApplicationResult }>(
         `/matches/${matchId}/prepare`,
       );
-      return res.data;
+      return res.data.data;
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.applications });
@@ -370,12 +415,121 @@ export function usePrepareApplicationMutation() {
   });
 }
 
+export function useArtifactsQuery(matchId?: string) {
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+
+  return useQuery({
+    queryKey: queryKeys.artifacts(matchId),
+    queryFn: async (): Promise<ArtifactEntity[]> => {
+      const res = await apiClient.get<{ data: ArtifactEntity[] }>("/artifacts", {
+        params: matchId ? { matchId } : undefined,
+      });
+      return res.data.data;
+    },
+    enabled: isAuthenticated && Boolean(matchId),
+    staleTime: 5_000,
+  });
+}
+
+export function useArtifactQuery(artifactId?: string) {
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+
+  return useQuery({
+    queryKey: queryKeys.artifact(artifactId || ""),
+    queryFn: async (): Promise<ArtifactEntity> => {
+      const res = await apiClient.get<{ data: ArtifactEntity }>(`/artifacts/${artifactId}`);
+      return res.data.data;
+    },
+    enabled: isAuthenticated && Boolean(artifactId),
+  });
+}
+
+export function useApproveChangesMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      artifactId,
+      payload,
+    }: {
+      artifactId: string;
+      payload: ApproveChangesPayload;
+    }): Promise<ArtifactEntity> => {
+      const res = await apiClient.patch<{ data: ArtifactEntity }>(
+        `/artifacts/${artifactId}/approve-changes`,
+        payload,
+      );
+      return res.data.data;
+    },
+    onSuccess: (updatedArtifact) => {
+      void queryClient.invalidateQueries({ queryKey: ["artifacts"] });
+      void queryClient.setQueryData(
+        queryKeys.artifact(updatedArtifact._id),
+        updatedArtifact,
+      );
+    },
+  });
+}
+
+export function useResumeRunMutation() {
+  return useMutation({
+    mutationFn: async (runId: string): Promise<unknown> => {
+      const res = await apiClient.post<{ data: unknown }>(`/runs/${runId}/resume`);
+      return res.data.data;
+    },
+  });
+}
+
+export function useRunSnapshotQuery(runId?: string) {
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+
+  return useQuery({
+    queryKey: queryKeys.run(runId || ""),
+    queryFn: async (): Promise<Record<string, unknown>> => {
+      const res = await apiClient.get<{ data: Record<string, unknown> }>(`/runs/${runId}`);
+      return res.data.data;
+    },
+    enabled: isAuthenticated && Boolean(runId),
+  });
+}
+
+// ============================================================================
 // ============================================================================
 // Applications Hooks
 // ============================================================================
+export type ApplicationColumnStatus = "saved" | "applied" | "interview" | "offer" | "rejected";
+
+export interface StatusHistoryEntry {
+  status: ApplicationColumnStatus;
+  changedAt: string;
+  note?: string;
+}
+
+export interface ApplicationDetailItem {
+  _id: string;
+  userId?: string;
+  jobId: JobEntity | { _id: string; title: string; company: string; location?: string; salary?: string; url?: string };
+  matchId?: MatchEntity | { _id: string; score: number; matchedSkills?: string[]; missingSkills?: string[] } | null;
+  status: ApplicationColumnStatus;
+  statusHistory?: StatusHistoryEntry[];
+  notes?: string;
+  order?: number;
+  appliedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface GroupedApplicationsData {
+  saved: ApplicationDetailItem[];
+  applied: ApplicationDetailItem[];
+  interview: ApplicationDetailItem[];
+  offer: ApplicationDetailItem[];
+  rejected: ApplicationDetailItem[];
+}
+
 export interface ApplicationsData {
-  grouped: GroupedApplications;
-  all: ApplicationItem[];
+  grouped: GroupedApplicationsData;
+  all: ApplicationDetailItem[];
   savedJobIds: Set<string>;
 }
 
@@ -386,28 +540,28 @@ export function useApplicationsQuery() {
     queryKey: queryKeys.applications,
     queryFn: async (): Promise<ApplicationsData> => {
       const res = await apiClient.get<{
-        data?: GroupedApplications | ApplicationItem[];
-        applications?: ApplicationItem[];
+        data?: GroupedApplicationsData | ApplicationDetailItem[];
+        applications?: ApplicationDetailItem[];
       }>("/applications");
 
       const raw = res.data.data ?? res.data.applications ?? [];
 
-      let grouped: GroupedApplications = {
+      let grouped: GroupedApplicationsData = {
         saved: [],
         applied: [],
         interview: [],
         offer: [],
         rejected: [],
       };
-      let all: ApplicationItem[] = [];
+      let all: ApplicationDetailItem[] = [];
 
       if (raw && !Array.isArray(raw) && typeof raw === "object") {
         grouped = {
-          saved: (raw as GroupedApplications).saved || [],
-          applied: (raw as GroupedApplications).applied || [],
-          interview: (raw as GroupedApplications).interview || [],
-          offer: (raw as GroupedApplications).offer || [],
-          rejected: (raw as GroupedApplications).rejected || [],
+          saved: (raw as GroupedApplicationsData).saved || [],
+          applied: (raw as GroupedApplicationsData).applied || [],
+          interview: (raw as GroupedApplicationsData).interview || [],
+          offer: (raw as GroupedApplicationsData).offer || [],
+          rejected: (raw as GroupedApplicationsData).rejected || [],
         };
         all = [
           ...grouped.saved,
@@ -417,9 +571,9 @@ export function useApplicationsQuery() {
           ...grouped.rejected,
         ];
       } else if (Array.isArray(raw)) {
-        all = raw;
-        for (const item of raw) {
-          const status = (item.status || "saved") as keyof GroupedApplications;
+        all = raw as ApplicationDetailItem[];
+        for (const item of all) {
+          const status = (item.status || "saved") as keyof GroupedApplicationsData;
           if (grouped[status]) {
             grouped[status].push(item);
           } else {
@@ -448,15 +602,20 @@ export function useCreateApplicationMutation() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (payload: Partial<ApplicationItem>): Promise<ApplicationItem> => {
-      const res = await apiClient.post<{ application: ApplicationItem }>(
+    mutationFn: async (payload: {
+      jobId?: string;
+      matchId?: string;
+      notes?: string;
+    }): Promise<ApplicationDetailItem> => {
+      const res = await apiClient.post<{ data: ApplicationDetailItem; application?: ApplicationDetailItem }>(
         "/applications",
         payload,
       );
-      return res.data.application;
+      return res.data.data ?? (res.data.application as ApplicationDetailItem);
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.applications });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.analyticsSummary });
     },
   });
 }
@@ -468,15 +627,23 @@ export function useUpdateApplicationMutation() {
     mutationFn: async ({
       id,
       ...patch
-    }: Partial<ApplicationItem> & { id: string }): Promise<ApplicationItem> => {
-      const res = await apiClient.patch<{ application: ApplicationItem }>(
+    }: {
+      id: string;
+      status?: ApplicationColumnStatus;
+      notes?: string;
+      order?: number;
+      note?: string;
+      appliedAt?: string | null;
+    }): Promise<ApplicationDetailItem> => {
+      const res = await apiClient.patch<{ data: ApplicationDetailItem; application?: ApplicationDetailItem }>(
         `/applications/${id}`,
         patch,
       );
-      return res.data.application;
+      return res.data.data ?? (res.data.application as ApplicationDetailItem);
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.applications });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.analyticsSummary });
     },
   });
 }
@@ -490,6 +657,7 @@ export function useDeleteApplicationMutation() {
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.applications });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.analyticsSummary });
     },
   });
 }
@@ -497,15 +665,61 @@ export function useDeleteApplicationMutation() {
 // ============================================================================
 // Analytics Hooks
 // ============================================================================
+export interface AnalyticsData {
+  totals: {
+    applications: number;
+    matches: number;
+    resumes: number;
+  };
+  funnel: {
+    counts: {
+      saved: number;
+      applied: number;
+      interview: number;
+      offer: number;
+      rejected: number;
+    };
+    conversionRates: {
+      savedToApplied: number;
+      appliedToInterview: number;
+      interviewToOffer: number;
+      overallConversion: number;
+    };
+  };
+  applicationsPerWeek: Array<{
+    week: string;
+    count: number;
+  }>;
+  averageMatchScore: number;
+  averageMatchScoreByStatus: Array<{
+    status: ApplicationColumnStatus;
+    averageScore: number;
+    count: number;
+  }>;
+  topMissingSkills: Array<{
+    skill: string;
+    count: number;
+    suggestion: string;
+  }>;
+  llmUsage: Array<{
+    date: string;
+    runsCount: number;
+    totalCostUsd: number;
+  }>;
+}
+
 export function useAnalyticsSummaryQuery() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
 
   return useQuery({
     queryKey: queryKeys.analyticsSummary,
-    queryFn: async (): Promise<AnalyticsSummary> => {
-      const res = await apiClient.get<{ summary: AnalyticsSummary }>("/analytics/summary");
-      return res.data.summary;
+    queryFn: async (): Promise<AnalyticsData> => {
+      const res = await apiClient.get<{ data?: AnalyticsData; summary?: AnalyticsData }>(
+        "/analytics/summary",
+      );
+      return res.data.data ?? (res.data.summary as AnalyticsData);
     },
     enabled: isAuthenticated,
+    staleTime: 30_000,
   });
 }

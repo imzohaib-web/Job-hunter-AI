@@ -2,6 +2,8 @@
 
 Production-grade AI job-hunt assistant (portfolio project).
 
+> 📖 **Comprehensive Architecture & Docker Guide**: For a detailed breakdown of end-to-end user flows, multi-agent LangGraph orchestration, containerization specs, and networking architecture, see [docs/project-flow-and-docker-setup.md](docs/project-flow-and-docker-setup.md).
+
 ## Monorepo
 
 | Path | Stack |

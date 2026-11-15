@@ -1,4 +1,4 @@
-# Local-dev overrides: expose internal services on the host for tooling/debugging.
+# Local-dev overrides: expose internal services on the host and enable live reload.
 services:
   mongo:
     ports:
@@ -13,3 +13,25 @@ services:
       - "8000:8000"
     volumes:
       - ./apps/ai-service/app:/app/app
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      target: dev
+    command: npm run dev -w @jobpilot/web -- --host 0.0.0.0
+    environment:
+      - VITE_API_URL=http://api:3001
+      - CHOKIDAR_USEPOLLING=true
+      - WATCHPACK_POLLING=true
+    volumes:
+      - ./apps/web:/app/apps/web
+      - ./packages/shared:/app/packages/shared
+      - /app/node_modules
+      - /app/apps/web/node_modules
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:5173/"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s

@@ -91,7 +91,42 @@ export async function listApplications(req: Request, res: Response): Promise<voi
   })
     .sort({ order: 1, updatedAt: -1 })
     .populate("jobId")
+    .populate("matchId")
     .lean();
+
+  // If matchId was not saved on application, backfill from Match collection
+  const appsNeedingMatch = applications.filter((app) => !app.matchId && app.jobId);
+  if (appsNeedingMatch.length > 0) {
+    const getJobIdString = (job: unknown): string => {
+      if (!job) return "";
+      if (typeof job === "object" && job !== null && "_id" in job) {
+        return String((job as { _id: unknown })._id);
+      }
+      return String(job);
+    };
+
+    const jobIds = appsNeedingMatch
+      .map((a) => {
+        const idStr = getJobIdString(a.jobId);
+        return Types.ObjectId.isValid(idStr) ? new Types.ObjectId(idStr) : null;
+      })
+      .filter((id): id is Types.ObjectId => id !== null);
+
+    if (jobIds.length > 0) {
+      const matches = await Match.find({
+        userId: new Types.ObjectId(userId),
+        jobId: { $in: jobIds },
+      }).lean();
+
+      const matchMap = new Map(matches.map((m) => [m.jobId.toString(), m]));
+      for (const app of appsNeedingMatch) {
+        const jId = getJobIdString(app.jobId);
+        if (matchMap.has(jId)) {
+          (app as Record<string, unknown>).matchId = matchMap.get(jId);
+        }
+      }
+    }
+  }
 
   const grouped: Record<ApplicationStatus, typeof applications> = {
     saved: [],
@@ -136,7 +171,7 @@ export async function updateApplication(
     throw new AppError(404, "APPLICATION_NOT_FOUND", "Application not found");
   }
 
-  const { status, notes, order, note } = req.body;
+  const { status, notes, order, note, appliedAt } = req.body;
 
   if (status && status !== application.status) {
     application.statusHistory.push({
@@ -149,6 +184,10 @@ export async function updateApplication(
     if (status === "applied" && !application.appliedAt) {
       application.appliedAt = new Date();
     }
+  }
+
+  if (appliedAt !== undefined) {
+    application.appliedAt = appliedAt ? new Date(appliedAt) : null;
   }
 
   if (typeof notes === "string") {

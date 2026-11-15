@@ -67,16 +67,14 @@ export async function approveChanges(
     for (const dec of decisions) {
       if (typeof dec.index === "number" && changes[dec.index]) {
         changes[dec.index].approved = dec.accepted;
-        if (dec.accepted) {
-          applyChangeToSections(sections, changes[dec.index]);
-        }
+        applyChangeToSections(sections, changes[dec.index], dec.accepted);
       }
     }
   } else if (Array.isArray(approvedChangeIds)) {
     for (const change of changes) {
       if (change.id && approvedChangeIds.includes(change.id)) {
         change.approved = true;
-        applyChangeToSections(sections, change);
+        applyChangeToSections(sections, change, true);
       }
     }
   }
@@ -94,20 +92,79 @@ export async function approveChanges(
 function applyChangeToSections(
   sections: ResumeSections,
   change: { section: string; before: string; after: string },
+  accepted: boolean = true,
 ): void {
+  const targetText = accepted ? change.after : change.before;
+  const oldText = accepted ? change.before : change.after;
+
   if (change.section === "summary") {
-    sections.summary = change.after;
+    sections.summary = targetText;
   } else if (change.section === "experience" && Array.isArray(sections.experience)) {
     for (const exp of sections.experience) {
       if (Array.isArray(exp.bullets)) {
-        const bulletIdx = exp.bullets.indexOf(change.before);
+        const bulletIdx = exp.bullets.indexOf(oldText);
         if (bulletIdx !== -1) {
-          exp.bullets[bulletIdx] = change.after;
+          exp.bullets[bulletIdx] = targetText;
           break;
         }
       }
     }
   }
+}
+
+export async function getArtifacts(
+  req: Request<unknown, unknown, unknown, { matchId?: string; type?: string }>,
+  res: Response,
+): Promise<void> {
+  const userId = req.user?.id;
+  if (!userId) {
+    throw new AppError(401, "UNAUTHORIZED", "Authentication required");
+  }
+
+  const { matchId, type } = req.query;
+  const filter: Record<string, unknown> = {
+    userId: new Types.ObjectId(userId),
+  };
+
+  if (matchId) {
+    if (!Types.ObjectId.isValid(matchId)) {
+      throw new AppError(400, "INVALID_ID", "Invalid match id");
+    }
+    filter.matchId = new Types.ObjectId(matchId);
+  }
+
+  if (type) {
+    filter.type = type;
+  }
+
+  const artifacts = await Artifact.find(filter).sort({ createdAt: -1 }).lean();
+  res.status(200).json({ data: artifacts });
+}
+
+export async function getArtifactById(
+  req: Request<{ id: string }>,
+  res: Response,
+): Promise<void> {
+  const userId = req.user?.id;
+  if (!userId) {
+    throw new AppError(401, "UNAUTHORIZED", "Authentication required");
+  }
+
+  const { id } = req.params;
+  if (!Types.ObjectId.isValid(id)) {
+    throw new AppError(400, "INVALID_ID", "Invalid artifact id");
+  }
+
+  const artifact = await Artifact.findOne({
+    _id: id,
+    userId: new Types.ObjectId(userId),
+  }).lean();
+
+  if (!artifact) {
+    throw new AppError(404, "ARTIFACT_NOT_FOUND", "Artifact not found");
+  }
+
+  res.status(200).json({ data: artifact });
 }
 
 export async function exportArtifact(

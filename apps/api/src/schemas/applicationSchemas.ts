@@ -17,6 +17,7 @@ export const updateApplicationSchema = z.object({
   notes: z.string().optional(),
   order: z.number().int().optional(),
   note: z.string().optional(),
+  appliedAt: z.union([z.string(), z.date()]).nullable().optional(),
 });
 
 export type UpdateApplicationInput = z.infer<typeof updateApplicationSchema>;

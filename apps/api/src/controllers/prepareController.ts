@@ -289,3 +289,22 @@ export async function resumeRun(
     throw new AppError(500, "RESUME_FAILED", "Failed to resume graph execution");
   }
 }
+
+export async function getRunSnapshot(
+  req: Request<{ id: string }>,
+  res: Response,
+): Promise<void> {
+  const userId = req.user?.id;
+  if (!userId) {
+    throw new AppError(401, "UNAUTHORIZED", "Authentication required");
+  }
+
+  const { id: runId } = req.params;
+
+  try {
+    const snapshotRes = await aiClient.get(`/v1/graphs/${runId}`);
+    res.status(200).json({ data: snapshotRes.data });
+  } catch {
+    throw new AppError(404, "RUN_NOT_FOUND", "Run not found");
+  }
+}

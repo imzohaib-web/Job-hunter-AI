@@ -127,20 +127,9 @@ export function JobsPage() {
     void applicationsQuery.refetch();
   };
 
-  // Handle Prepare Application action
-  const handlePrepareApplication = async (matchId: string) => {
-    try {
-      await prepareApplicationMutation.mutateAsync(matchId);
-      toast.success(
-        "Application materials tailored and added to your pipeline!",
-        "Preparation Started",
-      );
-      navigate("/applications");
-    } catch (err: unknown) {
-      const message =
-        err instanceof Error ? err.message : "Failed to prepare application. Ensure profile is verified.";
-      toast.error(message, "Error");
-    }
+  // Handle Prepare Application action: navigates to dedicated preparation run screen
+  const handlePrepareApplication = (matchId: string) => {
+    navigate(`/prepare/${matchId}`);
   };
 
   const isSearchComplete = (count: number) => {

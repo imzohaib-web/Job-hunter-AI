@@ -102,14 +102,14 @@ services:
     env_file:
       - ./apps/web/.env
     ports:
-      - "5173:8080"
+      - "5173:5173"
     depends_on:
       api:
         condition: service_healthy
     networks:
       - jobpilot
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/healthz"]
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:5173/healthz"]
       interval: 10s
       timeout: 5s
       retries: 10

@@ -98,7 +98,37 @@ export async function getAnalyticsSummary(req: Request, res: Response): Promise<
         )
       : 0;
 
-  // 5. Top missing skills across user matches
+  // 4b. Average match score by status
+  const allUserApps = await Application.find({ userId: userObjId })
+    .select("status jobId matchId")
+    .lean();
+  const allUserMatches = await Match.find({ userId: userObjId })
+    .select("jobId score")
+    .lean();
+
+  const matchScoreByJobId = new Map(allUserMatches.map((m) => [m.jobId.toString(), m.score]));
+  const statuses = ["saved", "applied", "interview", "offer", "rejected"] as const;
+  const averageMatchScoreByStatus = statuses.map((st) => {
+    const appsInStatus = allUserApps.filter((a) => a.status === st);
+    const scores: number[] = [];
+    for (const app of appsInStatus) {
+      const jId = app.jobId?.toString();
+      if (jId && matchScoreByJobId.has(jId)) {
+        scores.push(matchScoreByJobId.get(jId)!);
+      }
+    }
+    const avg =
+      scores.length > 0
+        ? Number((scores.reduce((sum, s) => sum + s, 0) / scores.length).toFixed(1))
+        : 0;
+    return {
+      status: st,
+      averageScore: avg,
+      count: appsInStatus.length,
+    };
+  });
+
+  // 5. Top missing skills across user matches with actionable project suggestions
   const missingSkillsAgg = await Match.aggregate([
     { $match: { userId: userObjId } },
     { $unwind: "$missingSkills" },
@@ -112,10 +142,36 @@ export async function getAnalyticsSummary(req: Request, res: Response): Promise<
     { $limit: 10 },
   ]);
 
-  const topMissingSkills = missingSkillsAgg.map((item) => ({
-    skill: item._id,
-    count: item.count,
-  }));
+  const skillSuggestions: Record<string, string> = {
+    docker: "Consider a project containerizing a full-stack app with Docker & Compose",
+    kubernetes: "Deploy a microservice cluster using Minikube or Helm charts",
+    aws: "Build and deploy a serverless API using AWS Lambda and DynamoDB",
+    graphql: "Design and implement a GraphQL schema and resolver with Apollo Server",
+    typescript: "Migrate an existing JavaScript codebase to strict TypeScript",
+    react: "Build a responsive dashboard using React, modern hooks, and TanStack Query",
+    python: "Develop an asynchronous REST microservice using FastAPI",
+    redis: "Implement distributed caching or Pub/Sub messaging using Redis",
+    postgresql: "Design an optimized relational schema with indexing and migration tooling",
+    "ci/cd": "Set up automated test and deployment pipelines with GitHub Actions",
+    terraform: "Define reproducible cloud infrastructure using Terraform modules",
+    gcp: "Deploy containerized services using Google Cloud Run and Cloud Build",
+  };
+
+  const topMissingSkills = missingSkillsAgg.map((item) => {
+    const skill = String(item._id);
+    const lower = skill.toLowerCase();
+    const matchedKey = Object.keys(skillSuggestions).find(
+      (k) => lower.includes(k) || k.includes(lower),
+    );
+    const suggestion = matchedKey
+      ? skillSuggestions[matchedKey]
+      : `Consider a project utilizing ${skill} to strengthen your profile`;
+    return {
+      skill,
+      count: item.count,
+      suggestion,
+    };
+  });
 
   // 6. LLM usage and cost per day for current user
   const llmUsageAgg = await LlmRun.aggregate([
@@ -148,6 +204,7 @@ export async function getAnalyticsSummary(req: Request, res: Response): Promise<
       funnel,
       applicationsPerWeek,
       averageMatchScore,
+      averageMatchScoreByStatus,
       topMissingSkills,
       llmUsage,
     },
