@@ -33,6 +33,33 @@ export function errorHandler(
     return;
   }
 
+  if (
+    typeof err === "object" &&
+    err !== null &&
+    "name" in err &&
+    err.name === "MulterError"
+  ) {
+    const multerErr = err as { code?: string; message?: string };
+    if (multerErr.code === "LIMIT_FILE_SIZE") {
+      const body: ApiErrorBody = {
+        error: {
+          code: "PAYLOAD_TOO_LARGE",
+          message: "File exceeds maximum size of 5 MB",
+        },
+      };
+      res.status(413).json(body);
+      return;
+    }
+    const body: ApiErrorBody = {
+      error: {
+        code: "BAD_REQUEST",
+        message: multerErr.message ?? "File upload error",
+      },
+    };
+    res.status(400).json(body);
+    return;
+  }
+
   logger.error({ err }, "Unhandled error");
   const body: ApiErrorBody = {
     error: {

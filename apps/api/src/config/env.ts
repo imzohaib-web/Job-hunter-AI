@@ -24,6 +24,12 @@ const envSchema = z.object({
   AI_SERVICE_KEY: z.string().min(1, "AI_SERVICE_KEY is required"),
   RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(900_000),
   RATE_LIMIT_MAX: z.coerce.number().int().positive().default(100),
+  RATE_LIMIT_AI_WINDOW_MS: z.coerce.number().int().positive().default(900_000),
+  RATE_LIMIT_AI_MAX: z.coerce.number().int().positive().default(20),
+  STORAGE_DRIVER: z.enum(["local", "s3"]).default("local"),
+  STORAGE_LOCAL_DIR: z.string().default("./uploads"),
+  AI_DAILY_QUOTA_DEFAULT: z.coerce.number().int().positive().default(50),
+  ATLAS_VECTOR_SEARCH: z.enum(["true", "false"]).default("false"),
 });
 
 export type Env = z.infer<typeof envSchema>;
