@@ -202,12 +202,13 @@ class CandidatePreferences(BaseModel):
         description="Work authorization status (e.g., 'US Citizen', 'Needs Sponsorship')",
         examples=["Needs Sponsorship"],
     )
-    experience_gap_tolerance_years: float = Field(
-        default=2.0,
+    experience_gap_tolerance_years: float | None = Field(
+        default=None,
         ge=0.0,
         description="Tolerated gap in years between candidate experience and role requirement",
         examples=[2.0],
     )
+
 
 
 class JobWithEmbedding(BaseModel):
@@ -236,8 +237,8 @@ class RankRequest(BaseModel):
         default=True,
         description="Enable LLM reranking and explanation for top 15 candidates",
     )
-    weights: RankingWeights = Field(
-        default_factory=RankingWeights,
+    weights: RankingWeights | None = Field(
+        default=None,
         description="Documented stage 4 weights",
     )
 

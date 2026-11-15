@@ -100,9 +100,6 @@ class AdzunaSource(JobSource):
             skills = extract_skills(description)
             seniority = detect_seniority(title, description)
 
-            if query.seniority and seniority != query.seniority.lower():
-                continue
-
             posting = JobPosting(
                 source=self.name,
                 external_id=str(item.get("id", "")),

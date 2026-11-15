@@ -88,22 +88,22 @@ class GreenhouseBoardSource(JobSource):
                     continue
 
                 if keywords_list:
-                    match_corpus = f"{title} {description[:500]}".lower()
-                    if not any(k in match_corpus for k in keywords_list):
+                    title_lower = title.lower()
+                    desc_sample = description[:1000].lower()
+                    corpus = f"{title_lower} {desc_sample}"
+                    min_matches = 1 if len(keywords_list) <= 1 else 2
+                    matched_count = sum(1 for k in keywords_list if k in corpus)
+                    title_hit = any(k in title_lower for k in keywords_list)
+                    if not (title_hit or matched_count >= min_matches):
                         continue
 
-                if query.location:
-                    loc_matches = query.location.lower() in location.lower() or (
-                        is_remote and "remote" in query.location.lower()
-                    )
-                    if not loc_matches:
+                # Remote jobs are location-compatible for any country
+                if query.location and not is_remote:
+                    if query.location.lower() not in location.lower():
                         continue
 
                 skills = extract_skills(description)
                 seniority = detect_seniority(title, description)
-
-                if query.seniority and seniority != query.seniority.lower():
-                    continue
 
                 posting = JobPosting(
                     source=self.name,

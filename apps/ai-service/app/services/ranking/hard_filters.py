@@ -123,9 +123,10 @@ def evaluate_hard_filters(
     if prefs.remote_only and not is_job_remote:
         return True, "Role is not remote; candidate requires fully remote position."
 
-    if prefs.location:
+    # Treat jobs flagged remote as location-compatible for any country!
+    if prefs.location and not is_job_remote:
         cand_loc = prefs.location.lower().strip()
-        if not is_job_remote and cand_loc not in job_loc_lower:
+        if cand_loc not in job_loc_lower:
             return True, f"Job location '{job.location}' does not match '{prefs.location}'."
 
     # 4. Work authorization
@@ -139,16 +140,19 @@ def evaluate_hard_filters(
                 if pat.search(job.description):
                     return True, "Role requires US work authorization without visa sponsorship."
 
-    # 5. Experience gap beyond tolerance
-    candidate_years = calculate_candidate_years_experience(profile)
-    required_years = extract_job_required_years(job)
-    gap = required_years - candidate_years
-    tolerance = prefs.experience_gap_tolerance_years
+    # 5. Experience gap beyond tolerance (only if explicitly set in candidate preferences)
+    if prefs.experience_gap_tolerance_years is not None:
+        candidate_years = calculate_candidate_years_experience(profile)
+        required_years = extract_job_required_years(job)
+        gap = required_years - candidate_years
+        tolerance = prefs.experience_gap_tolerance_years
 
-    if gap > tolerance:
-        return True, (
-            f"Requires {required_years:.0f} years of experience, exceeding candidate's "
-            f"{candidate_years:.1f} years beyond tolerance of {tolerance:.1f} years."
-        )
+        if gap > tolerance:
+            return True, (
+                f"Requires {required_years:.0f} years of experience, exceeding candidate's "
+                f"{candidate_years:.1f} years beyond tolerance of {tolerance:.1f} years."
+            )
 
+    # Note: When not explicitly set, experience and seniority are treated as
+    # soft score adjustments in Stage 4, NOT as hard exclusions.
     return False, None

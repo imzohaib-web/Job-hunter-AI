@@ -174,3 +174,27 @@ async def test_demo_source_included_when_enabled() -> None:
     result = await aggregator.aggregate(JobQuery(sources=["demo"]))
     assert len(result.jobs) == 1
     assert result.jobs[0].is_demo is True
+
+
+@pytest.mark.asyncio
+async def test_aggregator_reports_skipped_for_unconfigured_source() -> None:
+    unconfigured_source = MockSource("adzuna", postings=[], available=False)
+    configured_source = MockSource(
+        "remotive",
+        postings=[make_job("remotive", "r-1", "A", "Dev", "Remote")],
+        available=True,
+    )
+
+    aggregator = JobSourceAggregator(
+        sources={"adzuna": unconfigured_source, "remotive": configured_source},
+        settings=Settings(ai_service_key="test-key"),
+    )
+
+    result = await aggregator.aggregate(JobQuery())
+    status_map = {s.source: s for s in result.source_statuses}
+    assert "adzuna" in status_map
+    assert status_map["adzuna"].status == "skipped"
+    assert status_map["adzuna"].count == 0
+    assert "Missing credentials" in str(status_map["adzuna"].error)
+    assert status_map["remotive"].status == "ok"
+    assert status_map["remotive"].count == 1

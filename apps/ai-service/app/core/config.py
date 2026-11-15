@@ -41,8 +41,8 @@ class Settings(BaseSettings):
     adzuna_country: str = "us"
     rapidapi_key: str = ""
     serper_api_key: str = ""
-    greenhouse_boards: str = "airbnb,stripe,github,cloudflare,datadog"
-    lever_boards: str = "netflix,spotify,palantir,figma"
+    greenhouse_boards: str = "airbnb,stripe,cloudflare,datadog"
+    lever_boards: str = "spotify,palantir"
 
     @property
     def provider_order_list(self) -> list[str]:

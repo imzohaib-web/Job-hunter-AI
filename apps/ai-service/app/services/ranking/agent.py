@@ -86,13 +86,40 @@ def _compute_location_score(job: JobPosting, prefs: CandidatePreferences) -> flo
     is_remote = (
         job.remote is True or "remote" in job.location.lower() or "remote" in job.title.lower()
     )
+    job_loc_lower = job.location.lower()
+    job_desc_lower = job.description.lower()
+
+    # Detect if role requires a specific country or strict domestic visa
+    has_country_restriction = any(
+        r in job_loc_lower or r in job_desc_lower
+        for r in (
+            "us only",
+            "usa only",
+            "uk only",
+            "canada only",
+            "must be located in",
+            "us citizen",
+            "security clearance",
+        )
+    )
+
     if prefs.remote_only:
-        return 100.0 if is_remote else 30.0
-    if prefs.location and prefs.location.lower() in job.location.lower():
+        if not is_remote:
+            return 25.0
+        # If remote but has strict single-country residency requirement
+        if has_country_restriction:
+            return 80.0
         return 100.0
+
+    if prefs.location and prefs.location.lower() in job_loc_lower:
+        return 100.0
+
     if is_remote:
+        if has_country_restriction:
+            return 82.0
         return 95.0
-    return 70.0
+
+    return 65.0
 
 
 def _build_fallback_explanation(

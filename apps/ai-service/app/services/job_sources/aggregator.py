@@ -111,7 +111,7 @@ class JobSourceAggregator:
                             source=name,
                             status="skipped",
                             count=0,
-                            error=f"Source '{name}' is not configured (missing credentials).",
+                            error=f"Missing credentials: {name.upper()}_APP_ID/KEY not configured",
                         )
                     )
                     continue
@@ -132,7 +132,7 @@ class JobSourceAggregator:
                             source=name,
                             status="skipped",
                             count=0,
-                            error=f"Missing credentials for {name}",
+                            error=f"Missing credentials: {name.upper()}_APP_ID/KEY not configured",
                         )
                     )
                     continue

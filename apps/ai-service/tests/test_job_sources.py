@@ -261,3 +261,79 @@ async def test_retry_on_transient_failure() -> None:
     source = RemotiveSource()
     jobs = await source.search(JobQuery(keywords="python"))
     assert len(jobs) == 2
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_greenhouse_keyword_filtering_relevance() -> None:
+    # Fixture with relevant tech role and non-tech role
+    fake_board = {
+        "jobs": [
+            {
+                "id": 101,
+                "title": "Software Engineer Intern",
+                "content": "Work on backend distributed systems with Python and React.",
+                "location": {"name": "Remote"},
+                "updated_at": "2026-11-01T12:00:00Z",
+                "absolute_url": "https://example.com/job/101",
+            },
+            {
+                "id": 102,
+                "title": "Account Executive",
+                "content": "Responsible for B2B enterprise software sales quotas.",
+                "location": {"name": "New York, NY"},
+                "updated_at": "2026-11-01T12:00:00Z",
+                "absolute_url": "https://example.com/job/102",
+            },
+        ]
+    }
+    respx.get("https://boards-api.greenhouse.io/v1/boards/airbnb/jobs").mock(
+        return_value=Response(200, json=fake_board)
+    )
+
+    settings = Settings(ai_service_key="test-key", greenhouse_boards="airbnb")
+    source = GreenhouseBoardSource(settings=settings)
+
+    # Search for software engineer intern
+    jobs = await source.search(JobQuery(keywords="software engineer intern"))
+    assert len(jobs) == 1
+    assert jobs[0].external_id == "airbnb-101"
+    assert jobs[0].title == "Software Engineer Intern"
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_lever_keyword_filtering_relevance() -> None:
+    fake_board = [
+        {
+            "id": "lev-101",
+            "text": "Full Stack Developer",
+            "categories": {"location": "Remote"},
+            "workplaceType": "remote",
+            "description": "Building full-stack web applications with TypeScript and Node.",
+            "lists": [],
+            "createdAt": 1730000000000,
+            "hostedUrl": "https://example.com/job/lev-101",
+        },
+        {
+            "id": "lev-102",
+            "text": "Senior Account Executive",
+            "categories": {"location": "London"},
+            "workplaceType": "onsite",
+            "description": "Sales management for music software enterprise accounts.",
+            "lists": [],
+            "createdAt": 1730000000000,
+            "hostedUrl": "https://example.com/job/lev-102",
+        },
+    ]
+    respx.get("https://api.lever.co/v0/postings/spotify").mock(
+        return_value=Response(200, json=fake_board)
+    )
+
+    settings = Settings(ai_service_key="test-key", lever_boards="spotify")
+    source = LeverBoardSource(settings=settings)
+
+    jobs = await source.search(JobQuery(keywords="full stack developer"))
+    assert len(jobs) == 1
+    assert jobs[0].external_id == "spotify-lev-101"
+    assert jobs[0].title == "Full Stack Developer"

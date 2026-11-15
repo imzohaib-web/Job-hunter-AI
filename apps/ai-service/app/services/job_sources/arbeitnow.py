@@ -59,12 +59,9 @@ class ArbeitnowSource(JobSource):
                 if not any(k in combined_text for k in keywords_list):
                     continue
 
-            # Location filter
-            if query.location:
-                loc_match = query.location.lower() in location.lower() or (
-                    is_remote and "remote" in query.location.lower()
-                )
-                if not loc_match:
+            # Location filter: remote jobs are location-compatible for all countries
+            if query.location and not is_remote:
+                if query.location.lower() not in location.lower():
                     continue
 
             # Timestamp parsing
@@ -75,9 +72,6 @@ class ArbeitnowSource(JobSource):
 
             skills = extract_skills(description, tags)
             seniority = detect_seniority(title, description)
-
-            if query.seniority and seniority != query.seniority.lower():
-                continue
 
             posting = JobPosting(
                 source=self.name,

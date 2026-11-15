@@ -108,9 +108,6 @@ class JSearchSource(JobSource):
             skills = extract_skills(description, skill_list)
             seniority = detect_seniority(title, description)
 
-            if query.seniority and seniority != query.seniority.lower():
-                continue
-
             posting = JobPosting(
                 source=self.name,
                 external_id=str(item.get("job_id", "")),

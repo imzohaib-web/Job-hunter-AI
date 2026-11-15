@@ -55,12 +55,17 @@ class RemotiveSource(JobSource):
             location = item.get("candidate_required_location") or "Remote"
             job_url = item.get("url") or ""
 
-            # Check location match if specified and not just 'remote'
-            if query.location:
+            # Remotive is remote-first; jobs are location-compatible.
+            # If location specified, prefer location matches, but allow worldwide/anywhere/remote.
+            if query.location and "remote" not in query.location.lower():
                 q_loc = query.location.lower()
                 loc_lower = location.lower()
                 matches_loc = (
-                    q_loc in loc_lower or "anywhere" in loc_lower or "worldwide" in loc_lower
+                    q_loc in loc_lower
+                    or "anywhere" in loc_lower
+                    or "worldwide" in loc_lower
+                    or "remote" in loc_lower
+                    or not loc_lower
                 )
                 if not matches_loc:
                     continue
@@ -68,9 +73,6 @@ class RemotiveSource(JobSource):
             salary_min, salary_max, currency = parse_salary_range(item.get("salary"))
             skills = extract_skills(description, item.get("tags"))
             seniority = detect_seniority(title, description)
-
-            if query.seniority and seniority != query.seniority.lower():
-                continue
 
             posting = JobPosting(
                 source=self.name,
