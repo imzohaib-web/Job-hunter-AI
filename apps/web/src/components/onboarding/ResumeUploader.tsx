@@ -83,8 +83,25 @@ export function ResumeUploader({ onUploaded }: ResumeUploaderProps) {
       setUploadProgress(0);
       let message = "Failed to upload resume. Please try again.";
       if (axios.isAxiosError(err)) {
-        const data = err.response?.data as { error?: { message?: string }; message?: string } | undefined;
-        message = data?.error?.message || data?.message || err.message || message;
+        const data = err.response?.data as {
+          error?: {
+            message?: string;
+            code?: string;
+            details?: { message?: string } | string;
+          };
+          message?: string;
+        } | undefined;
+        const devDetail =
+          typeof data?.error?.details === "object" && data?.error?.details !== null
+            ? (data?.error?.details as { message?: string }).message
+            : typeof data?.error?.details === "string"
+              ? data?.error?.details
+              : undefined;
+
+        message =
+          data?.error?.message && data.error.message !== "An unexpected error occurred"
+            ? data.error.message
+            : devDetail || data?.error?.message || data?.message || err.message || message;
       } else if (err instanceof Error) {
         message = err.message;
       }

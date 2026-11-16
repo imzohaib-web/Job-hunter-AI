@@ -34,7 +34,8 @@ describe("ProfileReviewForm", () => {
       email: "alex@example.com",
       phone: "+1 555-0192",
       location: "Austin, TX",
-      summary: "Experienced software engineer specializing in distributed systems.",
+      summary:
+        "Experienced software engineer specializing in distributed systems.",
       links: ["https://github.com/alexrivera"],
       skills: [
         { name: "TypeScript", category: "Languages", years: 4 },
@@ -90,7 +91,9 @@ describe("ProfileReviewForm", () => {
     });
 
     // Check that low-confidence summary has a badge
-    const summaryCard = screen.getByText(/professional summary/i).closest(".rounded-xl");
+    const summaryCard = screen
+      .getByText(/professional summary/i)
+      .closest(".rounded-xl");
     expect(summaryCard).toHaveTextContent(/please check/i);
   });
 
@@ -101,7 +104,9 @@ describe("ProfileReviewForm", () => {
 
     expect(screen.getByRole("alert")).toBeInTheDocument();
     expect(screen.getByText(/scanned pdf, ocr used/i)).toBeInTheDocument();
-    expect(screen.getByText(/estimated dates on older roles/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/estimated dates on older roles/i),
+    ).toBeInTheDocument();
   });
 
   it("allows adding and removing skill chips", async () => {
@@ -122,7 +127,9 @@ describe("ProfileReviewForm", () => {
     expect(screen.getByText("GraphQL")).toBeInTheDocument();
 
     // Remove existing skill
-    const removeBtn = screen.getByRole("button", { name: /remove skill typescript/i });
+    const removeBtn = screen.getByRole("button", {
+      name: /remove skill typescript/i,
+    });
     await user.click(removeBtn);
 
     expect(screen.queryByText("TypeScript")).not.toBeInTheDocument();
@@ -137,7 +144,9 @@ describe("ProfileReviewForm", () => {
     const nameInput = screen.getByLabelText(/full name/i);
     await user.clear(nameInput);
 
-    const confirmBtn = screen.getByRole("button", { name: /confirm profile & continue/i });
+    const confirmBtn = screen.getByRole("button", {
+      name: /confirm profile & continue/i,
+    });
     await user.click(confirmBtn);
 
     expect(screen.getByText(/candidate name is required/i)).toBeInTheDocument();
@@ -161,11 +170,59 @@ describe("ProfileReviewForm", () => {
       <ProfileReviewForm resume={mockResume} onConfirmed={onConfirmedSpy} />,
     );
 
-    const confirmBtn = screen.getByRole("button", { name: /confirm profile & continue/i });
+    const confirmBtn = screen.getByRole("button", {
+      name: /confirm profile & continue/i,
+    });
     await user.click(confirmBtn);
 
     await waitFor(() => {
       expect(onConfirmedSpy).toHaveBeenCalledWith(updatedResume);
+    });
+  });
+
+  it("fills the form after fetch resolves when initially mounted with null/empty parsedProfile", async () => {
+    const unparsedResume: ResumeEntity = {
+      ...mockResume,
+      _id: "res-unparsed-1",
+      status: "processing",
+      parsedProfile: null,
+      verifiedProfile: null,
+    };
+
+    // Stale empty draft should not block newly loaded parsedProfile
+    localStorage.setItem(
+      `jobpilot_profile_draft_${unparsedResume._id}`,
+      JSON.stringify({ name: "", skills: [], experience: [], education: [] }),
+    );
+
+    const { rerender } = renderWithProviders(
+      <ProfileReviewForm resume={unparsedResume} onConfirmed={vi.fn()} />,
+    );
+
+    // Initially empty
+    expect(screen.getByLabelText(/full name/i)).toHaveValue("");
+    expect(screen.queryByText("TypeScript")).not.toBeInTheDocument();
+
+    // Fetch resolves and updates resume prop with populated parsed profile
+    const populatedResume: ResumeEntity = {
+      ...unparsedResume,
+      status: "ready",
+      parsedProfile: mockResume.parsedProfile,
+    };
+
+    rerender(
+      <ProfileReviewForm resume={populatedResume} onConfirmed={vi.fn()} />,
+    );
+
+    // Form fills automatically after fetch resolves
+    await waitFor(() => {
+      expect(screen.getByLabelText(/full name/i)).toHaveValue("Alex Rivera");
+      expect(screen.getByText("TypeScript")).toBeInTheDocument();
+      expect(screen.getByText("Node.js")).toBeInTheDocument();
+      expect(screen.getByDisplayValue("Tech Giant")).toBeInTheDocument();
+      expect(
+        screen.getByDisplayValue("University of Texas"),
+      ).toBeInTheDocument();
     });
   });
 });

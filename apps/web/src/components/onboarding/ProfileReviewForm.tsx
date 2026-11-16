@@ -81,7 +81,20 @@ export function ProfileReviewForm({
     try {
       const savedDraft = localStorage.getItem(draftKey);
       if (savedDraft) {
-        return JSON.parse(savedDraft) as ParsedProfile;
+        const parsed = JSON.parse(savedDraft) as ParsedProfile;
+        const hasDraftContent =
+          (parsed.skills && parsed.skills.length > 0) ||
+          (parsed.experience && parsed.experience.length > 0) ||
+          (parsed.education && parsed.education.length > 0);
+        const hasInitialContent =
+          (initialData.skills && initialData.skills.length > 0) ||
+          (initialData.experience && initialData.experience.length > 0) ||
+          (initialData.education && initialData.education.length > 0);
+
+        // Do not let an empty stale draft override real parsed initialData
+        if (hasDraftContent || !hasInitialContent) {
+          return parsed;
+        }
       }
     } catch {
       // ignore
@@ -95,17 +108,57 @@ export function ProfileReviewForm({
   const [newLinkUrl, setNewLinkUrl] = useState("");
   const [validationError, setValidationError] = useState<string | null>(null);
 
-  const confidences = resume.fieldConfidences ?? (resume.parsedProfile?.field_confidence as Record<string, number> | undefined);
+  const confidences =
+    resume.fieldConfidences ??
+    (resume.parsedProfile?.field_confidence as
+      Record<string, number> | undefined);
   const warnings = resume.warnings ?? [];
 
   const patchMutation = usePatchResumeMutation();
+
+  // Re-initialise form when parsed profile loads or updates (e.g. after fetch resolves)
+  useEffect(() => {
+    const freshProfile = resume.verifiedProfile ?? resume.parsedProfile;
+    if (freshProfile) {
+      setProfile((prev) => {
+        const prevHasContent =
+          (prev.skills && prev.skills.length > 0) ||
+          (prev.experience && prev.experience.length > 0) ||
+          (prev.education && prev.education.length > 0);
+        const freshHasContent =
+          (freshProfile.skills && freshProfile.skills.length > 0) ||
+          (freshProfile.experience && freshProfile.experience.length > 0) ||
+          (freshProfile.education && freshProfile.education.length > 0);
+
+        // If local state was empty or incoming server profile has populated content, re-initialize
+        if (!prevHasContent || freshHasContent) {
+          return {
+            ...freshProfile,
+            skills: freshProfile.skills ?? [],
+            experience: freshProfile.experience ?? [],
+            education: freshProfile.education ?? [],
+            projects: freshProfile.projects ?? [],
+            certifications: freshProfile.certifications ?? [],
+            languages: freshProfile.languages ?? [],
+          };
+        }
+        return prev;
+      });
+    }
+  }, [resume._id, resume.parsedProfile, resume.verifiedProfile]);
 
   // Autosave to localStorage on form changes
   useEffect(() => {
     try {
       localStorage.setItem(draftKey, JSON.stringify(profile));
       const now = new Date();
-      setLastSaved(now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }));
+      setLastSaved(
+        now.toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+        }),
+      );
     } catch {
       // ignore
     }
@@ -169,7 +222,10 @@ export function ProfileReviewForm({
     }));
   };
 
-  const handleUpdateExperience = (index: number, patch: Partial<WorkExperience>) => {
+  const handleUpdateExperience = (
+    index: number,
+    patch: Partial<WorkExperience>,
+  ) => {
     setProfile((prev) => {
       const exp = [...(prev.experience ?? [])];
       exp[index] = { ...exp[index], ...patch };
@@ -188,11 +244,18 @@ export function ProfileReviewForm({
     const exp = [...(profile.experience ?? [])];
     const target = exp[expIndex];
     if (!target) return;
-    target.bullets = [...(target.bullets ?? []), "New achievement bullet point"];
+    target.bullets = [
+      ...(target.bullets ?? []),
+      "New achievement bullet point",
+    ];
     setProfile({ ...profile, experience: exp });
   };
 
-  const handleUpdateBullet = (expIndex: number, bulletIndex: number, text: string) => {
+  const handleUpdateBullet = (
+    expIndex: number,
+    bulletIndex: number,
+    text: string,
+  ) => {
     const exp = [...(profile.experience ?? [])];
     const target = exp[expIndex];
     if (!target) return;
@@ -281,7 +344,10 @@ export function ProfileReviewForm({
     }));
   };
 
-  const handleUpdateCertification = (index: number, patch: Partial<Certification>) => {
+  const handleUpdateCertification = (
+    index: number,
+    patch: Partial<Certification>,
+  ) => {
     setProfile((prev) => {
       const cert = [...(prev.certifications ?? [])];
       cert[index] = { ...cert[index], ...patch };
@@ -308,7 +374,10 @@ export function ProfileReviewForm({
     }));
   };
 
-  const handleUpdateLanguage = (index: number, patch: Partial<LanguageProficiency>) => {
+  const handleUpdateLanguage = (
+    index: number,
+    patch: Partial<LanguageProficiency>,
+  ) => {
     setProfile((prev) => {
       const langs = [...(prev.languages ?? [])];
       langs[index] = { ...langs[index], ...patch };
@@ -344,10 +413,14 @@ export function ProfileReviewForm({
         // ignore
       }
 
-      toast.success("Profile verified and saved successfully!", "Profile Confirmed");
+      toast.success(
+        "Profile verified and saved successfully!",
+        "Profile Confirmed",
+      );
       onConfirmed(updatedResume);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to confirm profile.";
+      const msg =
+        err instanceof Error ? err.message : "Failed to confirm profile.";
       setValidationError(msg);
     }
   };
@@ -359,9 +432,12 @@ export function ProfileReviewForm({
       {/* Top Header & Autosave Indicator */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b pb-4">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">Review & Verify Profile</h2>
+          <h2 className="text-2xl font-bold tracking-tight">
+            Review & Verify Profile
+          </h2>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Check the extracted fields below. Low-confidence fields are marked for your review.
+            Check the extracted fields below. Low-confidence fields are marked
+            for your review.
           </p>
         </div>
 
@@ -443,7 +519,9 @@ export function ProfileReviewForm({
               <Input
                 id="profile-name"
                 value={profile.name}
-                onChange={(e) => setProfile({ ...profile, name: e.target.value })}
+                onChange={(e) =>
+                  setProfile({ ...profile, name: e.target.value })
+                }
                 placeholder="Jane Doe"
               />
             </div>
@@ -464,7 +542,9 @@ export function ProfileReviewForm({
                 id="profile-email"
                 type="email"
                 value={profile.email ?? ""}
-                onChange={(e) => setProfile({ ...profile, email: e.target.value })}
+                onChange={(e) =>
+                  setProfile({ ...profile, email: e.target.value })
+                }
                 placeholder="jane@example.com"
               />
             </div>
@@ -484,7 +564,9 @@ export function ProfileReviewForm({
               <Input
                 id="profile-phone"
                 value={profile.phone ?? ""}
-                onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
+                onChange={(e) =>
+                  setProfile({ ...profile, phone: e.target.value })
+                }
                 placeholder="+1 (555) 019-2834"
               />
             </div>
@@ -504,7 +586,9 @@ export function ProfileReviewForm({
               <Input
                 id="profile-location"
                 value={profile.location ?? ""}
-                onChange={(e) => setProfile({ ...profile, location: e.target.value })}
+                onChange={(e) =>
+                  setProfile({ ...profile, location: e.target.value })
+                }
                 placeholder="San Francisco, CA"
               />
             </div>
@@ -539,7 +623,12 @@ export function ProfileReviewForm({
                 onChange={(e) => setNewLinkUrl(e.target.value)}
                 className="text-xs"
               />
-              <Button type="button" variant="outline" size="sm" onClick={handleAddLink}>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleAddLink}
+              >
                 Add Link
               </Button>
             </div>
@@ -561,14 +650,18 @@ export function ProfileReviewForm({
               </span>
             )}
           </div>
-          <CardDescription>A concise overview of your background and core competencies.</CardDescription>
+          <CardDescription>
+            A concise overview of your background and core competencies.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <textarea
             rows={4}
             className="flex w-full rounded-md border border-input bg-background p-3 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             value={profile.summary}
-            onChange={(e) => setProfile({ ...profile, summary: e.target.value })}
+            onChange={(e) =>
+              setProfile({ ...profile, summary: e.target.value })
+            }
             placeholder="Write your professional summary…"
           />
         </CardContent>
@@ -602,7 +695,8 @@ export function ProfileReviewForm({
           <div className="space-y-4">
             {DEFAULT_CATEGORIES.map((cat) => {
               const categorySkills = (profile.skills ?? []).filter(
-                (s) => (s.category || "General").toLowerCase() === cat.toLowerCase(),
+                (s) =>
+                  (s.category || "General").toLowerCase() === cat.toLowerCase(),
               );
               if (categorySkills.length === 0) return null;
 
@@ -614,7 +708,9 @@ export function ProfileReviewForm({
                   <div className="flex flex-wrap gap-2">
                     {categorySkills.map((skill) => {
                       const globalIdx = (profile.skills ?? []).findIndex(
-                        (s) => s.name === skill.name && s.category === skill.category,
+                        (s) =>
+                          s.name === skill.name &&
+                          s.category === skill.category,
                       );
                       return (
                         <span
@@ -645,7 +741,10 @@ export function ProfileReviewForm({
           </div>
 
           {/* Add new skill inline */}
-          <form onSubmit={handleAddSkill} className="flex flex-wrap items-center gap-2 pt-2 border-t">
+          <form
+            onSubmit={handleAddSkill}
+            className="flex flex-wrap items-center gap-2 pt-2 border-t"
+          >
             <Input
               placeholder="Add skill (e.g. Python, Docker, PyTorch)"
               value={newSkillName}
@@ -663,7 +762,12 @@ export function ProfileReviewForm({
                 </option>
               ))}
             </select>
-            <Button type="submit" size="sm" variant="secondary" className="gap-1 h-9">
+            <Button
+              type="submit"
+              size="sm"
+              variant="secondary"
+              className="gap-1 h-9"
+            >
               <Plus className="h-3.5 w-3.5" />
               Add Skill
             </Button>
@@ -693,7 +797,13 @@ export function ProfileReviewForm({
                   Please check
                 </span>
               )}
-              <Button type="button" size="sm" variant="outline" onClick={handleAddExperience} className="gap-1">
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={handleAddExperience}
+                className="gap-1"
+              >
                 <Plus className="h-3.5 w-3.5" />
                 Add Position
               </Button>
@@ -703,11 +813,15 @@ export function ProfileReviewForm({
         <CardContent className="space-y-4">
           {(profile.experience ?? []).length === 0 ? (
             <p className="text-xs text-muted-foreground italic py-2">
-              No work experience extracted. Click &quot;Add Position&quot; to add one.
+              No work experience extracted. Click &quot;Add Position&quot; to
+              add one.
             </p>
           ) : (
             (profile.experience ?? []).map((exp, expIdx) => (
-              <div key={expIdx} className="rounded-xl border bg-card/60 p-4 space-y-3 relative group">
+              <div
+                key={expIdx}
+                className="rounded-xl border bg-card/60 p-4 space-y-3 relative group"
+              >
                 <button
                   type="button"
                   onClick={() => handleRemoveExperience(expIdx)}
@@ -722,7 +836,11 @@ export function ProfileReviewForm({
                     <Label className="text-xs">Job Title *</Label>
                     <Input
                       value={exp.title}
-                      onChange={(e) => handleUpdateExperience(expIdx, { title: e.target.value })}
+                      onChange={(e) =>
+                        handleUpdateExperience(expIdx, {
+                          title: e.target.value,
+                        })
+                      }
                       placeholder="e.g. Senior Software Engineer"
                       className="text-xs h-8"
                     />
@@ -731,7 +849,11 @@ export function ProfileReviewForm({
                     <Label className="text-xs">Company *</Label>
                     <Input
                       value={exp.company}
-                      onChange={(e) => handleUpdateExperience(expIdx, { company: e.target.value })}
+                      onChange={(e) =>
+                        handleUpdateExperience(expIdx, {
+                          company: e.target.value,
+                        })
+                      }
                       placeholder="e.g. Acme Corp"
                       className="text-xs h-8"
                     />
@@ -740,7 +862,11 @@ export function ProfileReviewForm({
                     <Label className="text-xs">Start Date</Label>
                     <Input
                       value={exp.start ?? ""}
-                      onChange={(e) => handleUpdateExperience(expIdx, { start: e.target.value })}
+                      onChange={(e) =>
+                        handleUpdateExperience(expIdx, {
+                          start: e.target.value,
+                        })
+                      }
                       placeholder="e.g. 2021-06"
                       className="text-xs h-8"
                     />
@@ -749,7 +875,9 @@ export function ProfileReviewForm({
                     <Label className="text-xs">End Date</Label>
                     <Input
                       value={exp.end ?? ""}
-                      onChange={(e) => handleUpdateExperience(expIdx, { end: e.target.value })}
+                      onChange={(e) =>
+                        handleUpdateExperience(expIdx, { end: e.target.value })
+                      }
                       placeholder="e.g. Present"
                       className="text-xs h-8"
                     />
@@ -758,14 +886,24 @@ export function ProfileReviewForm({
 
                 {/* Bullets */}
                 <div className="space-y-2 pt-1 border-t">
-                  <Label className="text-xs text-muted-foreground">Key Contributions & Bullets</Label>
+                  <Label className="text-xs text-muted-foreground">
+                    Key Contributions & Bullets
+                  </Label>
                   <div className="space-y-1.5">
                     {(exp.bullets ?? []).map((bullet, bulletIdx) => (
                       <div key={bulletIdx} className="flex items-center gap-2">
-                        <span className="text-xs text-primary font-bold">•</span>
+                        <span className="text-xs text-primary font-bold">
+                          •
+                        </span>
                         <Input
                           value={bullet}
-                          onChange={(e) => handleUpdateBullet(expIdx, bulletIdx, e.target.value)}
+                          onChange={(e) =>
+                            handleUpdateBullet(
+                              expIdx,
+                              bulletIdx,
+                              e.target.value,
+                            )
+                          }
                           className="text-xs h-8 flex-1"
                         />
                         <button
@@ -805,7 +943,9 @@ export function ProfileReviewForm({
                 <GraduationCap className="h-4 w-4 text-primary" />
                 Education
               </CardTitle>
-              <CardDescription>Degrees, universities, and academic background.</CardDescription>
+              <CardDescription>
+                Degrees, universities, and academic background.
+              </CardDescription>
             </div>
             <div className="flex items-center gap-2">
               {isFieldLowConfidence("education", confidences) && (
@@ -816,7 +956,13 @@ export function ProfileReviewForm({
                   Please check
                 </span>
               )}
-              <Button type="button" size="sm" variant="outline" onClick={handleAddEducation} className="gap-1">
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={handleAddEducation}
+                className="gap-1"
+              >
                 <Plus className="h-3.5 w-3.5" />
                 Add Education
               </Button>
@@ -830,7 +976,10 @@ export function ProfileReviewForm({
             </p>
           ) : (
             (profile.education ?? []).map((edu, eduIdx) => (
-              <div key={eduIdx} className="rounded-xl border bg-card/60 p-4 space-y-3 relative">
+              <div
+                key={eduIdx}
+                className="rounded-xl border bg-card/60 p-4 space-y-3 relative"
+              >
                 <button
                   type="button"
                   onClick={() => handleRemoveEducation(eduIdx)}
@@ -845,7 +994,11 @@ export function ProfileReviewForm({
                     <Label className="text-xs">Degree *</Label>
                     <Input
                       value={edu.degree}
-                      onChange={(e) => handleUpdateEducation(eduIdx, { degree: e.target.value })}
+                      onChange={(e) =>
+                        handleUpdateEducation(eduIdx, {
+                          degree: e.target.value,
+                        })
+                      }
                       placeholder="e.g. B.S. in Computer Science"
                       className="text-xs h-8"
                     />
@@ -854,7 +1007,11 @@ export function ProfileReviewForm({
                     <Label className="text-xs">Institution *</Label>
                     <Input
                       value={edu.institution}
-                      onChange={(e) => handleUpdateEducation(eduIdx, { institution: e.target.value })}
+                      onChange={(e) =>
+                        handleUpdateEducation(eduIdx, {
+                          institution: e.target.value,
+                        })
+                      }
                       placeholder="e.g. UC Berkeley"
                       className="text-xs h-8"
                     />
@@ -862,8 +1019,16 @@ export function ProfileReviewForm({
                   <div className="space-y-1">
                     <Label className="text-xs">Field of Study</Label>
                     <Input
-                      value={edu.field_of_study ?? ""}
-                      onChange={(e) => handleUpdateEducation(eduIdx, { field_of_study: e.target.value })}
+                      value={
+                        edu.field_of_study ??
+                        (edu as { fieldOfStudy?: string }).fieldOfStudy ??
+                        ""
+                      }
+                      onChange={(e) =>
+                        handleUpdateEducation(eduIdx, {
+                          field_of_study: e.target.value,
+                        })
+                      }
                       placeholder="e.g. Artificial Intelligence"
                       className="text-xs h-8"
                     />
@@ -895,9 +1060,17 @@ export function ProfileReviewForm({
                 <Wrench className="h-4 w-4 text-primary" />
                 Featured Projects
               </CardTitle>
-              <CardDescription>Technical projects, open source, and portfolio work.</CardDescription>
+              <CardDescription>
+                Technical projects, open source, and portfolio work.
+              </CardDescription>
             </div>
-            <Button type="button" size="sm" variant="outline" onClick={handleAddProject} className="gap-1">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={handleAddProject}
+              className="gap-1"
+            >
               <Plus className="h-3.5 w-3.5" />
               Add Project
             </Button>
@@ -910,7 +1083,10 @@ export function ProfileReviewForm({
             </p>
           ) : (
             (profile.projects ?? []).map((proj, projIdx) => (
-              <div key={projIdx} className="rounded-xl border bg-card/60 p-4 space-y-3 relative">
+              <div
+                key={projIdx}
+                className="rounded-xl border bg-card/60 p-4 space-y-3 relative"
+              >
                 <button
                   type="button"
                   onClick={() => handleRemoveProject(projIdx)}
@@ -925,7 +1101,9 @@ export function ProfileReviewForm({
                     <Label className="text-xs">Project Name *</Label>
                     <Input
                       value={proj.name}
-                      onChange={(e) => handleUpdateProject(projIdx, { name: e.target.value })}
+                      onChange={(e) =>
+                        handleUpdateProject(projIdx, { name: e.target.value })
+                      }
                       placeholder="e.g. AI Search Engine"
                       className="text-xs h-8"
                     />
@@ -934,7 +1112,9 @@ export function ProfileReviewForm({
                     <Label className="text-xs">Link / Repository URL</Label>
                     <Input
                       value={proj.url ?? ""}
-                      onChange={(e) => handleUpdateProject(projIdx, { url: e.target.value })}
+                      onChange={(e) =>
+                        handleUpdateProject(projIdx, { url: e.target.value })
+                      }
                       placeholder="https://github.com/..."
                       className="text-xs h-8"
                     />
@@ -947,7 +1127,11 @@ export function ProfileReviewForm({
                     rows={2}
                     className="flex w-full rounded-md border border-input bg-background p-2 text-xs"
                     value={proj.description}
-                    onChange={(e) => handleUpdateProject(projIdx, { description: e.target.value })}
+                    onChange={(e) =>
+                      handleUpdateProject(projIdx, {
+                        description: e.target.value,
+                      })
+                    }
                     placeholder="Project overview and measurable outcomes…"
                   />
                 </div>
@@ -966,7 +1150,13 @@ export function ProfileReviewForm({
                 <Award className="h-4 w-4 text-primary" />
                 Certifications
               </CardTitle>
-              <Button type="button" size="sm" variant="ghost" onClick={handleAddCertification} className="text-xs gap-1 h-7">
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                onClick={handleAddCertification}
+                className="text-xs gap-1 h-7"
+              >
                 <Plus className="h-3 w-3" />
                 Add
               </Button>
@@ -979,13 +1169,19 @@ export function ProfileReviewForm({
                   <Input
                     placeholder="Certification Name"
                     value={cert.name}
-                    onChange={(e) => handleUpdateCertification(cIdx, { name: e.target.value })}
+                    onChange={(e) =>
+                      handleUpdateCertification(cIdx, { name: e.target.value })
+                    }
                     className="text-xs h-7"
                   />
                   <Input
                     placeholder="Issuer (e.g. AWS, Google)"
                     value={cert.issuer ?? ""}
-                    onChange={(e) => handleUpdateCertification(cIdx, { issuer: e.target.value })}
+                    onChange={(e) =>
+                      handleUpdateCertification(cIdx, {
+                        issuer: e.target.value,
+                      })
+                    }
                     className="text-xs h-7"
                   />
                 </div>
@@ -1008,7 +1204,13 @@ export function ProfileReviewForm({
                 <Languages className="h-4 w-4 text-primary" />
                 Languages
               </CardTitle>
-              <Button type="button" size="sm" variant="ghost" onClick={handleAddLanguage} className="text-xs gap-1 h-7">
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                onClick={handleAddLanguage}
+                className="text-xs gap-1 h-7"
+              >
                 <Plus className="h-3 w-3" />
                 Add
               </Button>
@@ -1020,12 +1222,16 @@ export function ProfileReviewForm({
                 <Input
                   placeholder="Language"
                   value={lang.language}
-                  onChange={(e) => handleUpdateLanguage(lIdx, { language: e.target.value })}
+                  onChange={(e) =>
+                    handleUpdateLanguage(lIdx, { language: e.target.value })
+                  }
                   className="text-xs h-7 flex-1"
                 />
                 <select
                   value={lang.proficiency}
-                  onChange={(e) => handleUpdateLanguage(lIdx, { proficiency: e.target.value })}
+                  onChange={(e) =>
+                    handleUpdateLanguage(lIdx, { proficiency: e.target.value })
+                  }
                   className="text-xs h-7 rounded border bg-background px-2"
                 >
                   <option value="native">Native</option>
@@ -1050,7 +1256,8 @@ export function ProfileReviewForm({
       {/* Confirmation Footer */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t">
         <p className="text-xs text-muted-foreground">
-          Confirming locks this verified profile as the source of truth for all job matches and tailoring.
+          Confirming locks this verified profile as the source of truth for all
+          job matches and tailoring.
         </p>
 
         <Button
