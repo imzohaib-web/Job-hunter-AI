@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 from app.llm.client import generate_structured
 from app.llm.security import wrap_untrusted
-from app.schemas.profile import ParsedProfile
+from app.schemas.profile import ParsedProfile, SimplifiedProfile
 from app.services.file_validator import validate_resume_file
 from app.services.normalizer import post_process_parsed_profile
 from app.services.section_segmenter import (
@@ -20,15 +20,30 @@ logger = logging.getLogger("jobpilot.resume_parser")
 RESUME_EXTRACTION_PROMPT = """You are an expert resume parsing specialist.
 Extract the candidate's structured profile accurately from the segmented resume text provided below.
 
-Rules:
-1. Extract facts strictly present in the resume text. Never invent degrees, employers or metrics.
-2. For each skill, identify category (Languages, Frameworks, Cloud, Databases, Tools) and evidence.
-3. In work experience, capture company, title, start date, end date, bullets, and technologies.
-4. In education, capture institution, degree, field of study, graduation dates, and GPA.
-5. In projects, capture project name, description, technologies, and URLs.
-6. Extract contact details (name, email, phone, location, links).
+Instructions:
+1. Extract facts strictly present in the resume text. Never invent degrees, employers, metrics, or skills.
+2. Extract in this order:
+   - Contact details (full name, email, phone, location, links) and professional summary.
+   - Work experience: company, title, start date, end date, bullet points, and technologies used.
+   - Education: institution, degree, field of study, graduation dates, GPA.
+   - Projects: project name, description, technologies, and URLs.
+   - Core technical skills: categorize each skill (Languages, Frameworks, Cloud, Databases, Tools). Provide concise evidence.
+3. Keep descriptions factual and concise so the entire structured profile fits completely within the output token budget.
 
 Segmented Resume Content:
+{segmented_resume_data}
+"""
+
+SIMPLIFIED_EXTRACTION_PROMPT = """You are an expert resume parsing specialist.
+Extract ONLY the core work experience, education, and skills from the resume text provided below.
+
+Instructions:
+1. Extract all work experience entries (company, title, start date, end date, bullet points, technologies).
+2. Extract all education entries (institution, degree, field of study, graduation dates, GPA).
+3. Extract core technical skills with categories.
+4. Extract facts strictly present in the resume text. Keep bullet points concise.
+
+Resume Content:
 {segmented_resume_data}
 """
 
@@ -55,8 +70,11 @@ async def parse_resume_content(
     warnings.extend(extraction.warnings)
 
     raw_text = extraction.text.strip()
-    if not raw_text:
-        raise ValueError("Could not extract any readable text from the uploaded resume file.")
+    if len(raw_text) < 200:
+        raise ValueError(
+            f"Extracted resume text is too short ({len(raw_text)} characters, minimum 200 required). "
+            "Please ensure the file contains readable, uncorrupted text."
+        )
 
     # 3. Section segmentation heuristic
     sections = segment_resume_sections(raw_text)
@@ -69,26 +87,102 @@ async def parse_resume_content(
         max_chars=15000,
     )
 
-    llm_output = await generate_structured(
-        prompt_template=RESUME_EXTRACTION_PROMPT,
-        variables={"segmented_resume_data": untrusted_payload},
-        output_model=ParsedProfile,
-        temperature=0.0,
-        task_name="resume_parser",
+    llm_output: ParsedProfile | None = None
+    try:
+        llm_output = await generate_structured(
+            prompt_template=RESUME_EXTRACTION_PROMPT,
+            variables={"segmented_resume_data": untrusted_payload},
+            output_model=ParsedProfile,
+            temperature=0.0,
+            max_tokens=4096,
+            task_name="resume_parser",
+        )
+    except Exception as exc:
+        logger.warning(
+            "Primary structured parse failed for filename=%s: %s; attempting fallback with simplified schema",
+            filename,
+            exc,
+        )
+        warnings.append(f"Primary parser encountered an issue ({exc}); used simplified fallback schema.")
+
+    # 5. Check if fallback improvement is needed (Requirement 5)
+    # If primary parse failed OR returned empty experience/education while sections exist
+    has_experience_section = "experience" in sections or "work" in raw_text.lower()
+    has_education_section = "education" in sections or "university" in raw_text.lower() or "degree" in raw_text.lower()
+
+    needs_fallback = (
+        llm_output is None
+        or (has_experience_section and len(llm_output.experience) == 0)
+        or (has_education_section and len(llm_output.education) == 0)
     )
 
-    # 5. Deterministic post-processing: dates, skill aliasing/deduping, contact regex, confidence
+    if needs_fallback:
+        logger.info(
+            "Triggering fallback simplified parse for filename=%s (experience_empty=%s, education_empty=%s)",
+            filename,
+            len(llm_output.experience) == 0 if llm_output else True,
+            len(llm_output.education) == 0 if llm_output else True,
+        )
+        try:
+            simplified = await generate_structured(
+                prompt_template=SIMPLIFIED_EXTRACTION_PROMPT,
+                variables={"segmented_resume_data": untrusted_payload},
+                output_model=SimplifiedProfile,
+                temperature=0.0,
+                max_tokens=4096,
+                task_name="resume_parser_simplified",
+            )
+
+            if llm_output is None:
+                llm_output = ParsedProfile(
+                    name=filename.split(".")[0].replace("_", " ").title(),
+                    skills=simplified.skills,
+                    experience=simplified.experience,
+                    education=simplified.education,
+                )
+            else:
+                if len(llm_output.experience) == 0 and simplified.experience:
+                    llm_output.experience = simplified.experience
+                if len(llm_output.education) == 0 and simplified.education:
+                    llm_output.education = simplified.education
+                if len(llm_output.skills) == 0 and simplified.skills:
+                    llm_output.skills = simplified.skills
+
+            warnings.append("Applied fallback simplified extraction to recover resume sections.")
+        except Exception as fallback_exc:
+            logger.warning("Fallback simplified parse also failed: %s", fallback_exc)
+            warnings.append(f"Fallback parse error: {fallback_exc}")
+
+    if llm_output is None:
+        raise ValueError("Could not extract structured candidate profile from resume after all parse attempts.")
+
+    # 6. Never return an empty profile silently (Requirement 2)
+    if (
+        len(llm_output.skills) == 0
+        and len(llm_output.experience) == 0
+        and len(llm_output.education) == 0
+    ):
+        raise ValueError(
+            "Resume parsing resulted in an empty profile with no skills, experience, or education. "
+            "Please check that the resume has standard sections."
+        )
+
+    # 7. Deterministic post-processing: dates, skill aliasing/deduping, contact regex, confidence
     processed_profile = post_process_parsed_profile(llm_output, raw_text)
 
     latency_ms = (time.perf_counter() - start_time) * 1000
     # Audit log metrics ONLY: never log resume text or PII (Hard Rule 6)
     logger.info(
         "Resume parsing completed: filename=%s file_type=%s pages=%d ocr=%s "
-        "warnings=%d latency_ms=%.2f",
+        "skills=%d experience=%d education=%d projects=%d warnings=%d latency_ms=%.2f",
         filename,
         detected_type,
         extraction.pages_extracted,
         extraction.ocr_used,
+        len(processed_profile.skills),
+        len(processed_profile.experience),
+        len(processed_profile.education),
+        len(processed_profile.projects),
         len(warnings),
         latency_ms,
     )

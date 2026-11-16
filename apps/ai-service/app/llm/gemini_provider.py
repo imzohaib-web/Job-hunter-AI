@@ -76,13 +76,20 @@ class GeminiProvider(BaseLLMProvider):
                     )
                 )
 
-        system_instruction = "\n\n".join(system_prompts) if system_prompts else None
+        import json
+
+        schema_json = json.dumps(output_model.model_json_schema(), indent=2)
+        schema_directive = (
+            f"You must return ONLY a valid JSON object matching this schema:\n{schema_json}"
+        )
+
+        base_system = "\n\n".join(system_prompts) if system_prompts else "You are a helpful assistant."
+        system_instruction = f"{base_system}\n\n{schema_directive}"
 
         config = types.GenerateContentConfig(
             temperature=temperature,
             max_output_tokens=max_tokens,
             response_mime_type="application/json",
-            response_schema=output_model,
             system_instruction=system_instruction,
         )
 

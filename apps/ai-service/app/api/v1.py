@@ -61,7 +61,17 @@ async def parse_resume(
     content = await file.read()
     filename = file.filename or "resume.pdf"
 
-    result = await parse_resume_content(file_bytes=content, filename=filename)
+    try:
+        result = await parse_resume_content(file_bytes=content, filename=filename)
+    except ValueError as val_err:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "code": "PARSER_FAILED",
+                "message": str(val_err),
+            },
+        ) from val_err
+
     duration_ms = (time.perf_counter() - start_time) * 1000
 
     return ParseResumeResponse(

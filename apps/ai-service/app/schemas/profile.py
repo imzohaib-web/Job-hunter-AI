@@ -242,3 +242,21 @@ class ParsedProfile(BaseModel):
             }
         }
     )
+
+
+class SimplifiedProfile(BaseModel):
+    """Fallback simplified schema containing core skills, experience, and education."""
+
+    skills: list[ProfileSkill] = Field(
+        default_factory=list,
+        description="Core technical or professional skills",
+    )
+    experience: list[WorkExperience] = Field(
+        default_factory=list,
+        description="Work and employment experience history",
+    )
+    education: list[Education] = Field(
+        default_factory=list,
+        description="Academic education and degrees",
+    )
+
