@@ -20,7 +20,7 @@ export async function validateResumeFile(
   const ext = path.extname(originalFilename).toLowerCase();
   if (!ALLOWED_EXTENSIONS.has(ext)) {
     throw new AppError(
-      "BAD_REQUEST",
+      "UNSUPPORTED_FILE_TYPE",
       `Invalid file extension '${ext}'. Only PDF and DOCX files are allowed.`,
       400,
     );
@@ -70,7 +70,7 @@ export async function validateResumeFile(
       };
     }
     throw new AppError(
-      "BAD_REQUEST",
+      "UNSUPPORTED_FILE_TYPE",
       `File content does not match allowed types (detected ${detected.mime}). Renamed or spoofed files are rejected.`,
       400,
     );
@@ -89,7 +89,7 @@ export async function validateResumeFile(
   }
 
   throw new AppError(
-    "BAD_REQUEST",
+    "UNSUPPORTED_FILE_TYPE",
     "Invalid file format: unable to verify file magic bytes for PDF/DOCX.",
     400,
   );

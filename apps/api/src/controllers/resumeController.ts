@@ -27,7 +27,7 @@ export async function uploadResume(req: Request, res: Response): Promise<void> {
 
   if (!req.file) {
     throw new AppError(
-      "BAD_REQUEST",
+      "UNSUPPORTED_FILE_TYPE",
       "No file uploaded. Please upload a PDF or DOCX file.",
       400,
     );
@@ -38,11 +38,33 @@ export async function uploadResume(req: Request, res: Response): Promise<void> {
 
   // 2. Store file via StorageService (outside public path)
   const storage = getStorageService();
-  const stored = await storage.upload(
-    req.file.buffer,
-    req.file.originalname,
-    validation.detectedMime,
-  );
+  let stored;
+  try {
+    stored = await storage.upload(
+      req.file.buffer,
+      req.file.originalname,
+      validation.detectedMime,
+    );
+  } catch (err) {
+    const isDev = env.NODE_ENV !== "production";
+    const details = isDev
+      ? err instanceof Error
+        ? {
+            message: err.message,
+            code: (err as NodeJS.ErrnoException).code,
+            stack: err.stack,
+          }
+        : { message: String(err) }
+      : undefined;
+
+    logger.error({ err, details }, "Storage upload failed");
+    throw new AppError(
+      "STORAGE_FAILED",
+      "Failed to store resume file. Please try again.",
+      500,
+      details,
+    );
+  }
 
   // 3. Create Resume document in database
   const resume = await Resume.create({
@@ -69,16 +91,29 @@ export async function uploadResume(req: Request, res: Response): Promise<void> {
   };
 
   // 4. Enqueue BullMQ job parse-resume (fallback directly in test mode if Redis is down)
-  try {
-    await enqueueResumeParse(jobPayload);
-  } catch (queueErr) {
-    if (env.NODE_ENV === "test") {
-      logger.info("Test environment: executing resume parser worker synchronously");
-      await processParseResumeJob(jobPayload).catch((err) => {
-        logger.warn({ err }, "Synchronous test parser failed as expected in test case");
-      });
-    } else {
-      throw queueErr;
+  const shouldSync = req.query.sync === "true" || req.headers["x-sync-parse"] === "true";
+  if (shouldSync) {
+    await processParseResumeJob(jobPayload);
+  } else {
+    try {
+      await enqueueResumeParse(jobPayload);
+    } catch (queueErr) {
+      if (queueErr instanceof AppError && queueErr.code === "QUEUE_UNAVAILABLE") {
+        throw queueErr;
+      }
+      if (env.NODE_ENV === "test") {
+        logger.info("Test environment: executing resume parser worker synchronously");
+        await processParseResumeJob(jobPayload).catch((err) => {
+          logger.warn({ err }, "Synchronous test parser failed as expected in test case");
+        });
+      } else {
+        throw new AppError(
+          "QUEUE_UNAVAILABLE",
+          "Resume processing queue is currently unavailable. Please try again later.",
+          503,
+          queueErr instanceof Error ? queueErr.message : undefined,
+        );
+      }
     }
   }
 
@@ -216,5 +251,52 @@ export async function verifyResumeForTailoring(
   res.status(200).json({
     verified: true,
     verifiedProfile: resume.verifiedProfile,
+  });
+}
+
+/** Debug endpoint returning item counts and warnings (dev only, admin). */
+export async function getResumeDebug(req: Request, res: Response): Promise<void> {
+  const userId = req.user?.id;
+  const { id } = req.params;
+
+  const query = req.user?.role === "admin" ? { _id: id } : { _id: id, userId };
+  const resume = await Resume.findOne(query);
+  if (!resume) {
+    throw new AppError("NOT_FOUND", "Resume not found", 404);
+  }
+
+  const isAllowed =
+    env.NODE_ENV !== "production" ||
+    req.user?.role === "admin" ||
+    (userId && resume.userId.toString() === userId);
+
+  if (!isAllowed) {
+    throw new AppError(
+      "FORBIDDEN",
+      "Debug endpoint only available in development or for admin users",
+      403,
+    );
+  }
+
+  const profile = resume.parsedProfile;
+  const counts = {
+    skillsCount: profile?.skills?.length ?? 0,
+    experienceCount: profile?.experience?.length ?? 0,
+    educationCount: profile?.education?.length ?? 0,
+    projectsCount: profile?.projects?.length ?? 0,
+    certificationsCount: profile?.certifications?.length ?? 0,
+    languagesCount: profile?.languages?.length ?? 0,
+  };
+
+  res.status(200).json({
+    resumeId: resume._id,
+    status: resume.status,
+    version: resume.version,
+    counts,
+    warnings: resume.warnings ?? [],
+    fieldConfidences: resume.fieldConfidences ?? {},
+    error: resume.error,
+    createdAt: resume.createdAt,
+    updatedAt: resume.updatedAt,
   });
 }

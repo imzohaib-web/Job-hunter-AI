@@ -1,7 +1,6 @@
 import { Worker, type Job as BullJob } from "bullmq";
 import { env } from "../config/env.js";
 import { Job } from "../models/Job.js";
-import { LlmRun } from "../models/LlmRun.js";
 import { Match } from "../models/Match.js";
 import { Resume } from "../models/Resume.js";
 import { SearchRun } from "../models/SearchRun.js";

@@ -17,6 +17,12 @@ export type ErrorCode =
   | "INVALID_ID"
   | "EXPORT_FAILED"
   | "RESUME_FAILED"
+  | "UNSUPPORTED_FILE_TYPE"
+  | "FILE_TOO_LARGE"
+  | "STORAGE_FAILED"
+  | "PARSER_UNAVAILABLE"
+  | "PARSER_FAILED"
+  | "QUEUE_UNAVAILABLE"
   | (string & {});
 
 export interface ApiErrorBody {
@@ -24,6 +30,7 @@ export interface ApiErrorBody {
     code: ErrorCode;
     message: string;
     details?: unknown;
+    requestId?: string;
   };
 }
 

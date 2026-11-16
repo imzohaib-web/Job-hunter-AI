@@ -3,6 +3,7 @@ import {
   deleteResume,
   downloadResumeFile,
   getResume,
+  getResumeDebug,
   listResumes,
   patchResumeProfile,
   uploadResume,
@@ -22,6 +23,7 @@ resumeRouter.get("/download", asyncHandler(downloadResumeFile));
 resumeRouter.post("/", requireAuth, uploadResumeMiddleware, asyncHandler(uploadResume));
 resumeRouter.get("/", requireAuth, asyncHandler(listResumes));
 resumeRouter.get("/:id", requireAuth, asyncHandler(getResume));
+resumeRouter.get("/:id/debug", requireAuth, asyncHandler(getResumeDebug));
 resumeRouter.patch(
   "/:id/profile",
   requireAuth,

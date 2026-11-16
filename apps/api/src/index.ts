@@ -7,6 +7,7 @@ import { closeDiscoveryQueue } from "./queues/discoveryQueue.js";
 import { closeDiscoveryWorker, startDiscoveryWorker } from "./queues/discoveryWorker.js";
 import { closeResumeQueue } from "./queues/resumeQueue.js";
 import { closeResumeWorker, createResumeWorker } from "./queues/resumeWorker.js";
+import { getStorageService } from "./services/storage/index.js";
 import { logger } from "./utils/logger.js";
 
 const app = createApp();
@@ -22,13 +23,37 @@ async function startServer(): Promise<void> {
     // 2. Connect Redis
     getRedisClient();
 
-    // 3. Start BullMQ background workers
+    // 3. Storage initialization & self-check (validates upload path & permissions)
+    const storage = getStorageService();
+    logger.info(
+      { driver: env.STORAGE_DRIVER, uploadPath: storage.getBaseDir() },
+      `Selected storage driver: ${env.STORAGE_DRIVER}, path: ${storage.getBaseDir()}`,
+    );
+    try {
+      await storage.selfCheck();
+      logger.info(
+        { driver: env.STORAGE_DRIVER, uploadPath: storage.getBaseDir() },
+        `storage OK (${env.STORAGE_DRIVER}, ${storage.getBaseDir()})`,
+      );
+    } catch (storageErr) {
+      logger.fatal(
+        {
+          err: storageErr,
+          driver: env.STORAGE_DRIVER,
+          uploadPath: storage.getBaseDir(),
+        },
+        `Storage self-check failed for driver '${env.STORAGE_DRIVER}' at '${storage.getBaseDir()}': ${storageErr instanceof Error ? storageErr.message : String(storageErr)}`,
+      );
+      throw storageErr;
+    }
+
+    // 4. Start BullMQ background workers
     if (env.NODE_ENV !== "test") {
       createResumeWorker();
       startDiscoveryWorker();
     }
 
-    // 4. Start HTTP listener
+    // 5. Start HTTP listener
     server = app.listen(env.PORT, () => {
       logger.info({ port: env.PORT, env: env.NODE_ENV }, "JobPilot API server listening");
     });

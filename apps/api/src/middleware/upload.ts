@@ -15,7 +15,7 @@ export const uploadResumeMiddleware = multer({
     if (ext !== ".pdf" && ext !== ".docx") {
       return cb(
         new AppError(
-          "BAD_REQUEST",
+          "UNSUPPORTED_FILE_TYPE",
           `Unsupported file type '${ext}'. Only PDF and DOCX files are allowed.`,
           400,
         ),

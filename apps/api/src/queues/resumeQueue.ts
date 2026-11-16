@@ -1,5 +1,6 @@
 import { Queue } from "bullmq";
 import { env } from "../config/env.js";
+import { AppError } from "../types/errors.js";
 import { logger } from "../utils/logger.js";
 
 export const RESUME_QUEUE_NAME = "resume-processing";
@@ -54,7 +55,12 @@ export async function enqueueResumeParse(data: ParseResumeJobData): Promise<void
       { err, resumeId: data.resumeId },
       "Failed to enqueue to BullMQ directly; will fall back if in test",
     );
-    throw err;
+    throw new AppError(
+      "QUEUE_UNAVAILABLE",
+      "Resume processing queue is currently unavailable. Please try again later.",
+      503,
+      err instanceof Error ? err.message : undefined,
+    );
   }
 }
 
