@@ -2,6 +2,7 @@ import { Redis } from "ioredis";
 import mongoose from "mongoose";
 import { env } from "../config/env.js";
 import { aiClient } from "./aiClient.js";
+import { getStorageService } from "./storage/index.js";
 
 export type CheckStatus = "ok" | "error";
 
@@ -10,6 +11,7 @@ export interface DeepHealthChecks {
   aiService: CheckStatus;
   mongo: CheckStatus;
   redis: CheckStatus;
+  storage: CheckStatus;
 }
 
 export async function checkAiService(): Promise<CheckStatus> {
@@ -57,11 +59,22 @@ export async function checkRedis(): Promise<CheckStatus> {
   }
 }
 
+export async function checkStorage(): Promise<CheckStatus> {
+  try {
+    const storage = getStorageService();
+    await storage.selfCheck();
+    return "ok";
+  } catch {
+    return "error";
+  }
+}
+
 export async function runDeepHealthChecks(): Promise<DeepHealthChecks> {
-  const [aiService, mongo, redis] = await Promise.all([
+  const [aiService, mongo, redis, storage] = await Promise.all([
     checkAiService(),
     checkMongo(),
     checkRedis(),
+    checkStorage(),
   ]);
 
   return {
@@ -69,6 +82,7 @@ export async function runDeepHealthChecks(): Promise<DeepHealthChecks> {
     aiService,
     mongo,
     redis,
+    storage,
   };
 }
 

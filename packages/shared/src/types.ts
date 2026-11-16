@@ -14,6 +14,7 @@ export interface DeepHealthChecks {
   aiService: DependencyCheckStatus;
   mongo: DependencyCheckStatus;
   redis: DependencyCheckStatus;
+  storage?: DependencyCheckStatus;
 }
 
 export interface DeepHealthStatus extends HealthStatus {
@@ -61,6 +62,7 @@ export interface ApiErrorDetail {
   code: string;
   message: string;
   details?: unknown;
+  requestId?: string;
 }
 
 export interface ApiErrorResponse {

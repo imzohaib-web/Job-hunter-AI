@@ -36,6 +36,9 @@ coverage.xml
 data/
 uploads/
 test-uploads/
+/storage/
+apps/api/storage/
+!apps/api/src/services/storage/
 *.db
 *.sqlite
 
@@ -57,6 +60,7 @@ Thumbs.db
 
 # Test coverage
 coverage/
+tests/local/
 
 # Misc
 *.pem

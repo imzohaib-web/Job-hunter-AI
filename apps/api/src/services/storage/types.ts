@@ -17,4 +17,8 @@ export interface StorageService {
   getSignedUrl(storageKey: string, expiresInSec?: number): Promise<string>;
 
   delete(storageKey: string): Promise<void>;
+
+  selfCheck(): Promise<void>;
+
+  getBaseDir(): string;
 }

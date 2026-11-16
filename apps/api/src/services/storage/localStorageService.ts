@@ -1,22 +1,56 @@
 import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { env } from "../../config/env.js";
+import { AppError } from "../../types/errors.js";
 import { logger } from "../../utils/logger.js";
 import type { StorageService, StoredFile } from "./types.js";
 
-export function sanitizeFilename(raw: string): string {
-  // Strip paths, control chars, null bytes, special symbols
-  const basename = path.basename(raw).replace(/[\r\n\0]/g, "");
-  const safe = basename.replace(/[^a-zA-Z0-9._-]/g, "_");
-  return safe.length > 0 ? safe : "file.bin";
+/**
+ * Returns the absolute directory root of apps/api.
+ * Works across Windows/Linux, in dev (tsx), production (dist), or inside Docker.
+ */
+export function getApiRootDir(): string {
+  try {
+    const currentFile = fileURLToPath(import.meta.url);
+    let dir = path.dirname(currentFile);
+    while (dir !== path.dirname(dir)) {
+      if (
+        (path.basename(dir) === "api" && path.basename(path.dirname(dir)) === "apps") ||
+        (path.basename(dir) === "app" && path.basename(path.dirname(dir)) === "")
+      ) {
+        return dir;
+      }
+      dir = path.dirname(dir);
+    }
+    // eslint-disable-next-line no-empty
+  } catch {}
+
+  const cwd = process.cwd();
+  if (path.basename(cwd) === "api" && path.basename(path.dirname(cwd)) === "apps") {
+    return cwd;
+  }
+  return path.resolve(cwd, "apps", "api");
+}
+
+export function resolveStorageDir(customDir?: string): string {
+  const rawDir = customDir ?? env.STORAGE_LOCAL_DIR ?? "./storage/uploads";
+  if (path.isAbsolute(rawDir)) {
+    return path.resolve(rawDir);
+  }
+  return path.resolve(getApiRootDir(), rawDir);
 }
 
 export class LocalStorageService implements StorageService {
   private baseDir: string;
 
   constructor(baseDir?: string) {
-    this.baseDir = path.resolve(baseDir ?? env.STORAGE_LOCAL_DIR ?? "./uploads");
+    this.baseDir = resolveStorageDir(baseDir);
+  }
+
+  getBaseDir(): string {
+    return this.baseDir;
   }
 
   private async ensureDir(): Promise<void> {
@@ -24,8 +58,36 @@ export class LocalStorageService implements StorageService {
   }
 
   private getFilePath(storageKey: string): string {
-    const safeKey = path.basename(storageKey);
-    return path.join(this.baseDir, safeKey);
+    if (!storageKey || typeof storageKey !== "string") {
+      throw new AppError("STORAGE_FAILED", "Invalid storage key", 400);
+    }
+
+    // Path traversal rejection: key must not contain slashes, backslashes, or relative parent segments
+    if (
+      storageKey.includes("..") ||
+      storageKey.includes("/") ||
+      storageKey.includes("\\") ||
+      path.basename(storageKey) !== storageKey
+    ) {
+      throw new AppError(
+        "STORAGE_FAILED",
+        "Invalid storage key: path traversal detected",
+        400,
+      );
+    }
+
+    const resolved = path.resolve(this.baseDir, storageKey);
+    const resolvedBase = path.resolve(this.baseDir);
+    // Ensure the resolved file path is strictly inside baseDir
+    if (!resolved.startsWith(resolvedBase + path.sep)) {
+      throw new AppError(
+        "STORAGE_FAILED",
+        "Invalid storage key: path traversal detected",
+        400,
+      );
+    }
+
+    return resolved;
   }
 
   async upload(
@@ -34,17 +96,23 @@ export class LocalStorageService implements StorageService {
     mimeType: string,
   ): Promise<StoredFile> {
     await this.ensureDir();
-    const sanitized = sanitizeFilename(originalFilename);
+
+    // Step 2: generated safe file name (uuid + extension, never the original name)
+    const ext = path.extname(originalFilename).toLowerCase();
+    const safeExt = ext === ".pdf" || ext === ".docx" ? ext : ".bin";
     const uniqueId = crypto.randomUUID();
-    const storageKey = `${uniqueId}_${sanitized}`;
+    const storageKey = `${uniqueId}${safeExt}`;
     const filePath = this.getFilePath(storageKey);
 
     await fs.writeFile(filePath, fileBuffer);
-    logger.debug({ storageKey, size: fileBuffer.length }, "File stored to local disk");
+    logger.debug(
+      { storageKey, filePath, size: fileBuffer.length },
+      "File stored to local disk",
+    );
 
     return {
       storageKey,
-      filename: sanitized,
+      filename: path.basename(originalFilename),
       mimeType,
       size: fileBuffer.length,
     };
@@ -56,21 +124,23 @@ export class LocalStorageService implements StorageService {
   }
 
   async getSignedUrl(storageKey: string, expiresInSec: number = 3600): Promise<string> {
+    const safeKey = path.basename(storageKey);
     const expiresAt = Math.floor(Date.now() / 1000) + expiresInSec;
-    const dataToSign = `${storageKey}:${expiresAt}`;
+    const dataToSign = `${safeKey}:${expiresAt}`;
     const signature = crypto
       .createHmac("sha256", env.JWT_ACCESS_SECRET)
       .update(dataToSign)
       .digest("hex");
 
-    return `/api/resumes/download?key=${encodeURIComponent(storageKey)}&expires=${expiresAt}&sig=${signature}`;
+    return `/api/resumes/download?key=${encodeURIComponent(safeKey)}&expires=${expiresAt}&sig=${signature}`;
   }
 
   verifySignedUrl(storageKey: string, expiresAt: number, signature: string): boolean {
     if (Math.floor(Date.now() / 1000) > expiresAt) {
       return false;
     }
-    const dataToSign = `${storageKey}:${expiresAt}`;
+    const safeKey = path.basename(storageKey);
+    const dataToSign = `${safeKey}:${expiresAt}`;
     const expected = crypto
       .createHmac("sha256", env.JWT_ACCESS_SECRET)
       .update(dataToSign)
@@ -80,14 +150,31 @@ export class LocalStorageService implements StorageService {
   }
 
   async delete(storageKey: string): Promise<void> {
+    const filePath = this.getFilePath(storageKey);
     try {
-      const filePath = this.getFilePath(storageKey);
       await fs.unlink(filePath);
-      logger.debug({ storageKey }, "File deleted from local disk");
+      logger.debug({ storageKey, filePath }, "File deleted from local disk");
     } catch (err: unknown) {
       if ((err as NodeJS.ErrnoException).code !== "ENOENT") {
         logger.warn({ err, storageKey }, "Failed to delete file from local disk");
       }
+    }
+  }
+
+  async selfCheck(): Promise<void> {
+    await this.ensureDir();
+    const probeKey = `__probe_${crypto.randomUUID()}.tmp`;
+    const probePath = this.getFilePath(probeKey);
+    const probePayload = Buffer.from(`jobpilot-storage-check-${Date.now()}`);
+
+    try {
+      await fs.writeFile(probePath, probePayload);
+      const readBack = await fs.readFile(probePath);
+      if (!readBack.equals(probePayload)) {
+        throw new Error("Storage self-check readback integrity mismatch");
+      }
+    } finally {
+      await fs.unlink(probePath).catch(() => {});
     }
   }
 }
