@@ -25,6 +25,8 @@ COPY --from=build --chown=jobpilot:jobpilot /app/node_modules ./node_modules
 COPY --from=build --chown=jobpilot:jobpilot /app/packages/shared ./packages/shared
 COPY --from=build --chown=jobpilot:jobpilot /app/apps/api/package.json ./apps/api/package.json
 COPY --from=build --chown=jobpilot:jobpilot /app/apps/api/dist ./apps/api/dist
+RUN mkdir -p /app/storage/uploads /app/apps/api/storage/uploads && \
+    chown -R jobpilot:jobpilot /app/storage /app/apps/api/storage
 USER jobpilot
 EXPOSE 3001
 HEALTHCHECK --interval=10s --timeout=5s --start-period=20s --retries=5 \

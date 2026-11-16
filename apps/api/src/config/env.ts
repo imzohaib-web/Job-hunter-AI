@@ -27,7 +27,11 @@ const envSchema = z.object({
   RATE_LIMIT_AI_WINDOW_MS: z.coerce.number().int().positive().default(900_000),
   RATE_LIMIT_AI_MAX: z.coerce.number().int().positive().default(20),
   STORAGE_DRIVER: z.enum(["local", "s3"]).default("local"),
-  STORAGE_LOCAL_DIR: z.string().default("./uploads"),
+  STORAGE_LOCAL_DIR: z.string().default("./storage/uploads"),
+  S3_BUCKET: z.string().optional(),
+  S3_REGION: z.string().optional(),
+  AWS_ACCESS_KEY_ID: z.string().optional(),
+  AWS_SECRET_ACCESS_KEY: z.string().optional(),
   AI_DAILY_QUOTA_DEFAULT: z.coerce.number().int().positive().default(50),
   ATLAS_VECTOR_SEARCH: z.enum(["true", "false"]).default("false"),
 });
@@ -49,6 +53,22 @@ export function parseEnv(source: NodeJS.ProcessEnv): Env {
   if (!parsed.success) {
     throw new Error(formatEnvErrors(parsed.error));
   }
+
+  if (parsed.data.STORAGE_DRIVER === "s3") {
+    const missing: string[] = [];
+    if (!parsed.data.S3_BUCKET) missing.push("S3_BUCKET");
+    if (!parsed.data.S3_REGION) missing.push("S3_REGION");
+    if (!parsed.data.AWS_ACCESS_KEY_ID) missing.push("AWS_ACCESS_KEY_ID");
+    if (!parsed.data.AWS_SECRET_ACCESS_KEY) missing.push("AWS_SECRET_ACCESS_KEY");
+    if (missing.length > 0) {
+      throw new Error(
+        `Remote storage driver 's3' selected, but missing required credentials:\n${missing
+          .map((v) => `  - ${v}`)
+          .join("\n")}`,
+      );
+    }
+  }
+
   return parsed.data;
 }
 

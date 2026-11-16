@@ -70,6 +70,10 @@ services:
       AI_SERVICE_URL: http://ai-service:8000
       AI_SERVICE_KEY: ${AI_SERVICE_KEY:?AI_SERVICE_KEY must be set}
       CORS_ORIGIN: http://localhost:5173
+      STORAGE_DRIVER: local
+      STORAGE_LOCAL_DIR: /app/storage/uploads
+    volumes:
+      - api_storage:/app/storage/uploads
     ports:
       - "3001:3001"
     depends_on:
@@ -117,6 +121,7 @@ services:
 
 volumes:
   mongo_data:
+  api_storage:
 
 networks:
   jobpilot:
