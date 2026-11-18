@@ -14,11 +14,13 @@ export interface IMatch {
   jobId: Types.ObjectId;
   searchId?: Types.ObjectId;
   score: number;
+  tier?: "strong" | "good" | "possible" | "stretch";
   breakdown: MatchBreakdown;
   matchedSkills: string[];
   missingSkills: string[];
   explanation: string;
   hardFilterFailed: boolean;
+  pipelineVersion: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -51,6 +53,11 @@ const matchSchema = new Schema<MatchDocument>(
       min: 0,
       max: 100,
     },
+    tier: {
+      type: String,
+      enum: ["strong", "good", "possible", "stretch"],
+      default: "possible",
+    },
     breakdown: {
       type: Schema.Types.Mixed,
       default: {},
@@ -71,6 +78,11 @@ const matchSchema = new Schema<MatchDocument>(
       type: Boolean,
       default: false,
     },
+    pipelineVersion: {
+      type: String,
+      default: "2026-11-17-v3",
+      index: true,
+    },
   },
   {
     timestamps: true,
@@ -79,6 +91,7 @@ const matchSchema = new Schema<MatchDocument>(
 
 // Compound unique on userId + jobId
 matchSchema.index({ userId: 1, jobId: 1 }, { unique: true });
+matchSchema.index({ userId: 1, pipelineVersion: 1, score: -1 });
 matchSchema.index({ userId: 1, createdAt: -1 });
 matchSchema.index({ userId: 1, score: -1 });
 matchSchema.index({ searchId: 1, score: -1 });

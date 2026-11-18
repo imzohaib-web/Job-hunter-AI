@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { getAiVersion, getVersion } from "../controllers/healthController.js";
 import { deleteAccount } from "../controllers/authController.js";
 import { requireAdmin, requireAuth } from "../middleware/auth.js";
 import { checkAiQuota, incrementUserAiQuota } from "../middleware/quota.js";
@@ -12,16 +13,21 @@ import { authRouter } from "./auth.js";
 import { healthRouter } from "./health.js";
 import { jobRouter } from "./jobs.js";
 import { matchRouter } from "./matches.js";
+import { preferenceRouter } from "./preferences.js";
 import { resumeRouter } from "./resume.js";
 import { runRouter } from "./runs.js";
 import { searchRouter } from "./searches.js";
 
 export const apiRouter = Router();
 
+apiRouter.get("/version", getVersion);
+apiRouter.get("/version/ai", getAiVersion);
+
 apiRouter.use("/health", healthRouter);
 apiRouter.use("/auth", authRouter);
 apiRouter.use("/resumes", resumeRouter);
 apiRouter.use("/searches", searchRouter);
+apiRouter.use("/preferences", preferenceRouter);
 apiRouter.use("/matches", matchRouter);
 apiRouter.use("/jobs", jobRouter);
 apiRouter.use("/runs", runRouter);

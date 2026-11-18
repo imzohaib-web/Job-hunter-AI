@@ -4,7 +4,7 @@ import { env } from "../config/env.js";
 import { aiClient } from "./aiClient.js";
 import { getStorageService } from "./storage/index.js";
 
-export type CheckStatus = "ok" | "error";
+export type CheckStatus = "ok" | "starting" | "error";
 
 export interface DeepHealthChecks {
   api: CheckStatus;
@@ -16,12 +16,24 @@ export interface DeepHealthChecks {
 
 export async function checkAiService(): Promise<CheckStatus> {
   try {
-    const res = await aiClient.get("/health");
-    if (res.status === 200 && res.data?.status === "ok") {
+    const readyRes = await aiClient.get<{ status?: string }>("/ready", { timeout: 2000 });
+    if (readyRes.status === 200 && readyRes.data?.status === "ready") {
       return "ok";
     }
-    return "error";
-  } catch {
+    return "starting";
+  } catch (err: unknown) {
+    const axiosErr = err as { response?: { status?: number } };
+    if (axiosErr.response?.status === 503) {
+      return "starting";
+    }
+    try {
+      const healthRes = await aiClient.get<{ status?: string }>("/health", { timeout: 2000 });
+      if (healthRes.status === 200) {
+        return "starting";
+      }
+    } catch {
+      // Both /ready and /health failed
+    }
     return "error";
   }
 }

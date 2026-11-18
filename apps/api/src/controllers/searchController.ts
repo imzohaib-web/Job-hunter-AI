@@ -3,6 +3,7 @@ import { Types } from "mongoose";
 import { SearchRun } from "../models/SearchRun.js";
 import { enqueueDiscovery } from "../queues/discoveryQueue.js";
 import type { CreateSearchInput } from "../schemas/searchSchemas.js";
+import { aiClient } from "../services/aiClient.js";
 import { appEventBus } from "../services/eventBus.js";
 import { AppError } from "../types/errors.js";
 
@@ -17,27 +18,78 @@ export async function createSearch(
     throw new AppError(401, "UNAUTHORIZED", "Authentication required");
   }
 
-  const rawKeywords = req.body.keywords || (req.body as { query?: string }).query || "";
+  // Pre-search readiness check against ai-service /ready
+  try {
+    const readyRes = await aiClient.get<{ status?: string }>("/ready", { timeout: 3000 });
+    if (readyRes.status !== 200 || readyRes.data?.status !== "ready") {
+      throw new AppError(
+        "AI_SERVICE_UNAVAILABLE",
+        "The AI service is still starting, try again in a moment",
+        503,
+      );
+    }
+  } catch (err: unknown) {
+    if (err instanceof AppError) {
+      throw err;
+    }
+    const axiosErr = err as { response?: { status?: number; data?: unknown } };
+    if (axiosErr.response?.status === 503 || axiosErr.response?.status === 500) {
+      throw new AppError(
+        "AI_SERVICE_UNAVAILABLE",
+        "The AI service is still starting, try again in a moment",
+        503,
+      );
+    }
+    if (process.env.NODE_ENV !== "test") {
+      throw new AppError(
+        "AI_SERVICE_UNAVAILABLE",
+        "The AI service is still starting, try again in a moment",
+        503,
+      );
+    }
+  }
+
+  const preferences = req.body.preferences;
+  const rawKeywords =
+    req.body.keywords ||
+    (req.body as { query?: string }).query ||
+    (preferences?.targetTitles?.join(", ")) ||
+    "";
   const keywords = rawKeywords.trim();
-  const { location, remoteOnly, seniority, sources } = req.body;
+  const location =
+    req.body.location ||
+    (preferences?.locations?.map((l: { city?: string; country?: string; label?: string }) => l.city || l.country || l.label).filter(Boolean).join(", ")) ||
+    null;
+  const remoteOnly = Boolean(
+    req.body.remoteOnly ??
+      (preferences?.remoteWorldwide || preferences?.workModes?.includes("remote") || false),
+  );
+  const seniority = req.body.seniority || preferences?.experienceLevels?.[0] || null;
+  const sources = req.body.sources || preferences?.sources || [];
 
   // 10-minute idempotency check for the current user
-  const tenMinutesAgo = new Date(Date.now() - IDEMPOTENCY_WINDOW_MS);
-  const existingRun = await SearchRun.findOne({
-    userId: new Types.ObjectId(userId),
-    createdAt: { $gte: tenMinutesAgo },
-    "query.keywords": keywords,
-    "query.location": location || null,
-    "query.remoteOnly": Boolean(remoteOnly),
-    "query.seniority": seniority || null,
-  }).sort({ createdAt: -1 });
+  // Never reuse a SearchRun if status === "failed", and allow forced re-runs when requested.
+  // Only reuse if there is an active in-flight run (pending/processing).
+  const force = Boolean(req.body.force);
+  if (!force) {
+    const tenMinutesAgo = new Date(Date.now() - IDEMPOTENCY_WINDOW_MS);
+    const existingRun = await SearchRun.findOne({
+      userId: new Types.ObjectId(userId),
+      createdAt: { $gte: tenMinutesAgo },
+      status: { $in: ["pending", "processing"] },
+      "query.keywords": keywords,
+      "query.location": location || null,
+      "query.remoteOnly": Boolean(remoteOnly),
+      "query.seniority": seniority || null,
+    }).sort({ createdAt: -1 });
 
-  if (existingRun) {
-    res.status(200).json({
-      message: "Reusing active search run from past 10 minutes",
-      data: existingRun,
-    });
-    return;
+    if (existingRun) {
+      res.status(200).json({
+        message: "Reusing active search run from past 10 minutes",
+        data: existingRun,
+      });
+      return;
+    }
   }
 
   const searchRun = await SearchRun.create({
@@ -48,6 +100,7 @@ export async function createSearch(
       remoteOnly: Boolean(remoteOnly),
       seniority: seniority || null,
       sources: sources || [],
+      preferences: preferences || null,
     },
     status: "pending",
     resultsCount: 0,
@@ -61,10 +114,11 @@ export async function createSearch(
       userId,
       query: {
         keywords,
-        location,
+        location: location || undefined,
         remoteOnly,
-        seniority,
+        seniority: seniority || undefined,
         sources,
+        preferences,
       },
     });
   } catch {

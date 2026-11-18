@@ -15,6 +15,7 @@ export interface DiscoveryJobData {
     remoteOnly?: boolean;
     seniority?: string;
     sources?: string[];
+    preferences?: Record<string, unknown>;
   };
 }
 

@@ -12,11 +12,13 @@ export interface ISearchRun {
     reason?: string | null;
     error?: string | null;
     durationMs?: number;
+    localFiltersApplied?: string[];
   }>;
   diagnostics?: Record<string, unknown> | null;
   resultsCount: number;
   status: string;
   error?: string | null;
+  errorDetails?: unknown;
   errorStack?: string | null;
   durationMs: number;
   createdAt: Date;
@@ -63,6 +65,10 @@ const searchRunSchema = new Schema<SearchRunDocument>(
     },
     error: {
       type: String,
+      default: null,
+    },
+    errorDetails: {
+      type: Schema.Types.Mixed,
       default: null,
     },
     errorStack: {

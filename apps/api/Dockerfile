@@ -17,8 +17,13 @@ COPY apps/api ./apps/api
 RUN npm run build -w @jobpilot/shared && npm run build -w @jobpilot/api
 
 FROM node:20-alpine AS runner
+ARG GIT_SHA=dev
+ARG BUILD_TIME=unknown
 WORKDIR /app
-ENV NODE_ENV=production
+ENV NODE_ENV=production \
+    GIT_SHA=$GIT_SHA \
+    BUILD_TIME=$BUILD_TIME \
+    PIPELINE_VERSION=2026-11-17-v3
 RUN addgroup -S jobpilot && adduser -S jobpilot -G jobpilot
 COPY --from=build --chown=jobpilot:jobpilot /app/package.json /app/package-lock.json ./
 COPY --from=build --chown=jobpilot:jobpilot /app/node_modules ./node_modules

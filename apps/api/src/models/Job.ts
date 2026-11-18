@@ -7,6 +7,8 @@ export interface IJob {
   title: string;
   company: string;
   location: string;
+  locationBadge?: string;
+  duplicateLocations?: string[];
   remote: boolean;
   salary?: Record<string, unknown> | string | null;
   description: string;
@@ -29,6 +31,8 @@ const jobSchema = new Schema<JobDocument>(
     title: { type: String, required: true, trim: true },
     company: { type: String, required: true, trim: true },
     location: { type: String, required: true },
+    locationBadge: { type: String, default: null },
+    duplicateLocations: { type: [String], default: [] },
     remote: { type: Boolean, default: false },
     salary: { type: Schema.Types.Mixed, default: null },
     description: { type: String, required: true },

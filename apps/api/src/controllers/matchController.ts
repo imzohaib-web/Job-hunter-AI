@@ -1,3 +1,4 @@
+import { PIPELINE_VERSION } from "@jobpilot/shared";
 import type { Request, Response } from "express";
 import { type FilterQuery, Types } from "mongoose";
 import { Job } from "../models/Job.js";
@@ -18,6 +19,7 @@ export async function listMatches(
 
   const matchFilter: FilterQuery<IMatch> = {
     userId: new Types.ObjectId(userId),
+    pipelineVersion: PIPELINE_VERSION,
   };
 
   if (searchId) {
@@ -34,6 +36,15 @@ export async function listMatches(
     const allowedJobIds = remoteJobIds.map((j) => j._id);
     matchFilter.jobId = { $in: allowedJobIds };
   }
+
+  // Check if legacy matches exist for this user from older pipeline versions
+  const legacyCount = await Match.countDocuments({
+    userId: new Types.ObjectId(userId),
+    $or: [
+      { pipelineVersion: { $ne: PIPELINE_VERSION } },
+      { pipelineVersion: { $exists: false } },
+    ],
+  });
 
   // Sorting
   let sortOption: Record<string, 1 | -1> = { score: -1 };
@@ -59,6 +70,8 @@ export async function listMatches(
       limit: Number(limit),
       totalPages: Math.ceil(total / Number(limit)) || 1,
     },
+    hasLegacyMatches: legacyCount > 0,
+    legacyCount,
   });
 }
 

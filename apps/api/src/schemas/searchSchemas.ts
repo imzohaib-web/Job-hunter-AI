@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { jobPreferencesSchema } from "./preferenceSchemas.js";
 
 export const createSearchSchema = z
   .object({
@@ -8,12 +9,18 @@ export const createSearchSchema = z
     remoteOnly: z.boolean().optional().default(false),
     seniority: z.string().trim().optional(),
     sources: z.array(z.string()).optional(),
+    force: z.boolean().optional().default(false),
+    preferences: jobPreferencesSchema.optional(),
   })
   .refine(
     (data) =>
-      Boolean((data.keywords && data.keywords.length > 0) || (data.query && data.query.length > 0)),
+      Boolean(
+        (data.keywords && data.keywords.length > 0) ||
+          (data.query && data.query.length > 0) ||
+          (data.preferences?.targetTitles && data.preferences.targetTitles.length > 0),
+      ),
     {
-      message: "Keywords are required",
+      message: "Keywords or target job titles are required",
       path: ["keywords"],
     },
   );
