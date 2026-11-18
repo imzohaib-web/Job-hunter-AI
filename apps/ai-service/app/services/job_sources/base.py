@@ -27,6 +27,22 @@ class RateLimitPolicy:
 class JobSource(ABC):
     """Abstract base class for all job board and ATS adapters."""
 
+    def __init__(self) -> None:
+        self._last_query_sent: str = ""
+        self._last_http_status: int | None = None
+
+    @property
+    def last_query_sent(self) -> str:
+        return getattr(self, "_last_query_sent", "")
+
+    @property
+    def last_http_status(self) -> int | None:
+        return getattr(self, "_last_http_status", None)
+
+    @property
+    def last_error(self) -> str | None:
+        return getattr(self, "_last_error", None)
+
     @property
     @abstractmethod
     def name(self) -> str:
@@ -42,6 +58,21 @@ class JobSource(ABC):
     def is_available(self) -> bool:
         """Indicates whether credentials/prerequisites are satisfied."""
         return True
+
+    @property
+    def display_name(self) -> str:
+        """Human-readable display name for this source."""
+        return self.name.capitalize()
+
+    @property
+    def native_filters(self) -> list[str]:
+        """List of filter field names that this source handles natively."""
+        return ["keywords"]
+
+    @property
+    def unavailable_reason(self) -> str | None:
+        """Explanation when credentials or prerequisites are missing."""
+        return None
 
     @abstractmethod
     async def search(self, query: JobQuery) -> list[JobPosting]:
@@ -80,6 +111,8 @@ class JobSource(ABC):
                         response = await async_client.get(
                             url, params=params, headers=default_headers
                         )
+
+                self._last_http_status = response.status_code
 
                 # Retry on rate limiting or 5xx server errors if attempts remain
                 transient = response.status_code in (429, 500, 502, 503, 504)

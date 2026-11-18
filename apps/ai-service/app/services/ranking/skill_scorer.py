@@ -84,10 +84,10 @@ def evaluate_skill_overlap(
     # Combine job required skills and extracted skills from description
     job_skills_set: set[str] = set()
     for s in job.skills_required:
-        extracted = extract_skills(s)
+        extracted = extract_skills(s, company=job.company)
         job_skills_set.update(extracted if extracted else [s])
 
-    extracted_from_desc = extract_skills(job.description)
+    extracted_from_desc = extract_skills(job.description, company=job.company)
     job_skills_set.update(extracted_from_desc)
 
     if not job_skills_set:

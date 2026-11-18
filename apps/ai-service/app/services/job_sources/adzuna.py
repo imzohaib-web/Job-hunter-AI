@@ -32,8 +32,22 @@ class AdzunaSource(JobSource):
         return "adzuna"
 
     @property
+    def display_name(self) -> str:
+        return "Adzuna"
+
+    @property
     def is_available(self) -> bool:
         return bool(self._settings.adzuna_app_id.strip() and self._settings.adzuna_app_key.strip())
+
+    @property
+    def unavailable_reason(self) -> str | None:
+        if not self.is_available:
+            return "skipped: no API key"
+        return None
+
+    @property
+    def native_filters(self) -> list[str]:
+        return []
 
     @property
     def rate_limit(self) -> RateLimitPolicy:
@@ -53,10 +67,54 @@ class AdzunaSource(JobSource):
             "results_per_page": min(query.limit, 50),
             "content-type": "application/json",
         }
+
+        # Native filter: what (keywords or target titles)
+        what_terms: list[str] = []
+        if query.target_titles:
+            what_terms.extend([t.strip() for t in query.target_titles if t.strip()])
         if query.keywords:
-            params["what"] = query.keywords
-        if query.location:
+            what_terms.append(query.keywords.strip())
+        if what_terms:
+            params["what"] = " ".join(what_terms)
+
+        # Native filter: where (location)
+        if query.locations:
+            first_loc = query.locations[0]
+            if isinstance(first_loc, dict):
+                loc_val = (
+                    first_loc.get("city")
+                    or first_loc.get("country")
+                    or first_loc.get("label")
+                    or ""
+                )
+            else:
+                loc_val = str(first_loc)
+            if loc_val:
+                params["where"] = loc_val
+        elif query.location:
             params["where"] = query.location
+
+        # Native filter: salary_min (annualized)
+        if query.salary_min is not None and query.salary_min > 0:
+            is_monthly = query.salary_period == "monthly"
+            annual_min = query.salary_min * 12 if is_monthly else query.salary_min
+            params["salary_min"] = int(annual_min)
+
+        # Native filter: contract / employment type
+        if query.employment_types:
+            types_lower = [t.lower() for t in query.employment_types]
+            if any(t in types_lower for t in ["full-time", "full_time"]):
+                params["full_time"] = 1
+            if any(t in types_lower for t in ["contract", "freelance"]):
+                params["contract"] = 1
+            if any(t in types_lower for t in ["part-time", "part_time"]):
+                params["part_time"] = 1
+
+        # Native filter: max_days_old
+        if query.date_posted:
+            day_map = {"24h": 1, "3d": 3, "7d": 7, "30d": 30}
+            if query.date_posted in day_map:
+                params["max_days_old"] = day_map[query.date_posted]
 
         try:
             data = await self.fetch_json(url, params=params)

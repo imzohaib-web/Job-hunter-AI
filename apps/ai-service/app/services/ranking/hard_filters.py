@@ -96,22 +96,28 @@ def evaluate_hard_filters(
 ) -> tuple[bool, str | None]:
     """Evaluate deterministic hard filter constraints.
 
-    Returns:
-        (failed: bool, reason: str | None)
+    Hard filters apply ONLY to:
+    - Excluded companies
+    - Excluded keywords
+    - Criteria explicitly set and marked 'required' by user
+    Everything else is a soft preference evaluated in evaluate_soft_preferences.
     """
-    # 1. Excluded companies
+    req_fields = set(prefs.required_fields)
+
+    # 1. Excluded companies (always hard filter)
     norm_company = normalize_company(job.company)
     for excluded in prefs.excluded_companies:
         if norm_company and normalize_company(excluded) in norm_company:
             return True, f"Company '{job.company}' is in candidate excluded list."
 
-    # 2. Excluded keywords in title or description
-    check_corpus = f"{job.title} {job.description[:300]}".lower()
+    # 2. Excluded keywords in title or description (always hard filter)
+    check_corpus = f"{job.title} {job.description[:400]}".lower()
     for kw in prefs.excluded_keywords:
-        if kw.strip() and kw.strip().lower() in check_corpus:
+        kw_clean = kw.strip().lower()
+        if kw_clean and re.search(r"\b" + re.escape(kw_clean) + r"\b", check_corpus):
             return True, f"Job matches candidate excluded keyword '{kw.strip()}'."
 
-    # 3. Location / Remote preference
+    # 3. Explicitly required: Remote only
     job_loc_lower = job.location.lower()
     is_job_remote = (
         job.remote is True
@@ -119,18 +125,17 @@ def evaluate_hard_filters(
         or "anywhere" in job_loc_lower
         or "remote" in job.title.lower()
     )
+    if "remote_only" in req_fields and prefs.remote_only and not is_job_remote:
+        return True, "Role is not remote; candidate marked remote-only as strictly required."
 
-    if prefs.remote_only and not is_job_remote:
-        return True, "Role is not remote; candidate requires fully remote position."
-
-    # Treat jobs flagged remote as location-compatible for any country!
-    if prefs.location and not is_job_remote:
+    # 4. Explicitly required: Location
+    if "location" in req_fields and prefs.location and not is_job_remote:
         cand_loc = prefs.location.lower().strip()
         if cand_loc not in job_loc_lower:
-            return True, f"Job location '{job.location}' does not match '{prefs.location}'."
+            return True, f"Job location '{job.location}' does not match required '{prefs.location}'."
 
-    # 4. Work authorization
-    if prefs.work_authorization:
+    # 5. Explicitly required: Work authorization without sponsorship
+    if "work_authorization" in req_fields and prefs.work_authorization:
         auth_lower = prefs.work_authorization.lower()
         needs_sponsorship = any(
             t in auth_lower for t in ("sponsor", "visa", "opt", "h1b", "require")
@@ -138,21 +143,123 @@ def evaluate_hard_filters(
         if needs_sponsorship:
             for pat in NO_SPONSORSHIP_PATTERNS:
                 if pat.search(job.description):
-                    return True, "Role requires US work authorization without visa sponsorship."
+                    return True, "Role strictly requires US work authorization without visa sponsorship."
 
-    # 5. Experience gap beyond tolerance (only if explicitly set in candidate preferences)
-    if prefs.experience_gap_tolerance_years is not None:
-        candidate_years = calculate_candidate_years_experience(profile)
-        required_years = extract_job_required_years(job)
-        gap = required_years - candidate_years
-        tolerance = prefs.experience_gap_tolerance_years
-
-        if gap > tolerance:
-            return True, (
-                f"Requires {required_years:.0f} years of experience, exceeding candidate's "
-                f"{candidate_years:.1f} years beyond tolerance of {tolerance:.1f} years."
-            )
-
-    # Note: When not explicitly set, experience and seniority are treated as
-    # soft score adjustments in Stage 4, NOT as hard exclusions.
     return False, None
+
+
+def infer_candidate_level(profile: ParsedProfile, prefs: CandidatePreferences) -> str:
+    """Infers candidate seniority level ('junior', 'mid', 'senior') from profile and preferences."""
+    cand_levels = [lvl.lower().strip() for lvl in (prefs.experience_levels or []) if lvl.strip()]
+    if any(l in ("junior", "entry", "internship", "intern") for l in cand_levels):
+        return "junior"
+    if any(l in ("senior", "lead", "staff", "principal", "director") for l in cand_levels):
+        return "senior"
+
+    years = calculate_candidate_years_experience(profile)
+    summary_and_titles = f"{profile.summary} {' '.join(e.title for e in profile.experience)}".lower()
+    if "intern" in summary_and_titles or "junior" in summary_and_titles or years < 2.0:
+        return "junior"
+    if years >= 5.0 or "senior" in summary_and_titles or "lead" in summary_and_titles:
+        return "senior"
+    return "mid"
+
+
+def evaluate_soft_preferences(
+    job: JobPosting,
+    profile: ParsedProfile,
+    prefs: CandidatePreferences,
+) -> tuple[int, list[str]]:
+    """Evaluates soft preference mismatches and returns (net_adjustment: int, reasons: list[str])."""
+    adjustments: list[int] = []
+    reasons: list[str] = []
+
+    title_desc = f"{job.title} {job.description}".lower()
+    job_loc_lower = job.location.lower()
+    job_title_lower = job.title.lower()
+    is_job_remote = (
+        job.remote is True
+        or "remote" in job_loc_lower
+        or "anywhere" in job_loc_lower
+        or "worldwide" in job_loc_lower
+        or "remote" in job_title_lower
+    )
+
+    cand_level = infer_candidate_level(profile, prefs)
+
+    # 1. Seniority gap / bonus evaluation
+    is_senior_job = any(
+        k in job_title_lower
+        for k in ["senior", "sr.", "lead", "staff", "principal", "director", "head of", "architect"]
+    )
+    is_junior_job = any(
+        k in job_title_lower
+        for k in [
+            "junior", "jr.", "entry", "entry-level", "intern", "internship",
+            "trainee", "associate", "graduate", "fresher", "apprentice",
+        ]
+    )
+
+    if cand_level == "junior":
+        if is_senior_job:
+            adjustments.append(-25)
+            reasons.append("Senior role, above your level")
+        elif is_junior_job:
+            adjustments.append(10)
+            reasons.append("Junior/internship role, matches your level")
+    elif cand_level == "senior":
+        if is_junior_job:
+            adjustments.append(-15)
+            reasons.append("Entry role, you prefer senior")
+
+    # 2. Employment type mismatch (-10)
+    if prefs.employment_types:
+        cand_types = [t.lower().strip() for t in prefs.employment_types if t.strip()]
+        job_type = (job.employment_type or "").lower()
+
+        has_fulltime_pref = any(t in ("full-time", "full_time") for t in cand_types)
+        is_contract = "contract" in job_type or "contract" in title_desc or "freelance" in job_type
+        is_parttime = "part-time" in job_type or "part time" in title_desc
+
+        if has_fulltime_pref and (is_contract or is_parttime):
+            tag = "Contract" if is_contract else "Part-time"
+            adjustments.append(-10)
+            reasons.append(f"{tag} role, you prefer full-time")
+
+    # 3. Location & Country restriction mismatch (-20)
+    # Remote jobs restricted to specific countries not containing candidate's country get -20
+    country_restrictions = [
+        ("usa, canada", "Remote, but restricted to USA/Canada"),
+        ("us only", "Remote, but restricted to USA"),
+        ("usa only", "Remote, but restricted to USA"),
+        ("united states only", "Remote, but restricted to USA"),
+        ("uk only", "Remote, but restricted to UK"),
+        ("germany only", "Remote, but restricted to Germany"),
+        ("canada only", "Remote, but restricted to Canada"),
+        ("eu only", "Remote, but restricted to Europe"),
+        ("europe only", "Remote, but restricted to Europe"),
+    ]
+    matched_restriction_note = None
+    for pattern, note in country_restrictions:
+        if pattern in job_loc_lower or pattern in title_desc[:400]:
+            matched_restriction_note = note
+            break
+
+    if matched_restriction_note:
+        adjustments.append(-20)
+        reasons.append(matched_restriction_note)
+    elif prefs.remote_only and not is_job_remote:
+        adjustments.append(-10)
+        reasons.append("On-site role, you prefer remote")
+
+    # 4. Salary minimum mismatch (-10)
+    if prefs.salary_min and prefs.salary_min > 0:
+        if job.salary_max is not None and job.salary_max < prefs.salary_min:
+            adjustments.append(-10)
+            reasons.append("Disclosed salary below your minimum target")
+
+    # Sum adjustments (penalties capped at -35, bonuses allowed)
+    net_val = sum(adjustments)
+    final_adjustment = max(-35, min(20, net_val))
+    return final_adjustment, reasons
+    return total_penalty, reasons

@@ -139,3 +139,48 @@ def parse_salary_range(salary_raw: str | None) -> tuple[float | None, float | No
     min_val = min(values[0], values[1])
     max_val = max(values[0], values[1])
     return min_val, max_val, currency
+
+
+REGION_SUFFIX_RE: Final[re.Pattern[str]] = re.compile(
+    r"[,\|\-\/]\s*(?:neur|france|emea|apac|latam|us|usa|uk|germany|berlin|paris|london|remote|europe|north america|greece|athens|madrid|singapore|dubai|canada)\s*$",
+    re.IGNORECASE,
+)
+
+
+def extract_base_title_and_region(title: str) -> tuple[str, str | None]:
+    """Strip region/country/location suffixes from title and return (base_title, region)."""
+    match = REGION_SUFFIX_RE.search(title)
+    if match:
+        region = re.sub(r"^[,\|\-\/\s]+", "", match.group(0)).strip()
+        base = title[:match.start()].strip()
+        return base, region
+    return title.strip(), None
+
+
+def collapse_near_duplicates(postings: list[Any]) -> list[Any]:
+    """Treat postings with same company and same base title (after removing region suffixes) as one card.
+
+    Preserves the primary posting and notes additional regions in duplicate_locations.
+    """
+    seen: dict[tuple[str, str], Any] = {}
+    collapsed: list[Any] = []
+
+    for job in postings:
+        company_key = normalize_company(getattr(job, "company", ""))
+        base_title, region = extract_base_title_and_region(getattr(job, "title", ""))
+        title_key = normalize_title(base_title)
+
+        key = (company_key, title_key)
+        if key in seen:
+            primary = seen[key]
+            # Collect extra region tag
+            extra_loc = region or getattr(job, "location", "")
+            if extra_loc and extra_loc not in primary.duplicate_locations:
+                primary.duplicate_locations.append(extra_loc)
+        else:
+            if region and region not in job.duplicate_locations:
+                job.duplicate_locations.append(region)
+            seen[key] = job
+            collapsed.append(job)
+
+    return collapsed

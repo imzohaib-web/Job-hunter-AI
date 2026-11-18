@@ -39,9 +39,23 @@ class DemoSource(JobSource):
         return "demo"
 
     @property
+    def display_name(self) -> str:
+        return "Demo Jobs"
+
+    @property
     def is_available(self) -> bool:
         """Only available when explicitly enabled by USE_DEMO_JOBS=true."""
         return bool(self._settings.use_demo_jobs)
+
+    @property
+    def unavailable_reason(self) -> str | None:
+        if not self.is_available:
+            return "Demo source disabled (USE_DEMO_JOBS=false)"
+        return None
+
+    @property
+    def native_filters(self) -> list[str]:
+        return ["keywords"]
 
     @property
     def rate_limit(self) -> RateLimitPolicy:

@@ -24,8 +24,22 @@ class JSearchSource(JobSource):
         return "jsearch"
 
     @property
+    def display_name(self) -> str:
+        return "JSearch"
+
+    @property
     def is_available(self) -> bool:
         return bool(self._settings.rapidapi_key.strip())
+
+    @property
+    def unavailable_reason(self) -> str | None:
+        if not self.is_available:
+            return "skipped: no API key"
+        return None
+
+    @property
+    def native_filters(self) -> list[str]:
+        return []
 
     @property
     def rate_limit(self) -> RateLimitPolicy:
@@ -48,17 +62,34 @@ class JSearchSource(JobSource):
         if query.remote_only:
             search_parts.append("remote")
 
+        self._last_query_sent = " ".join(search_parts)
+
         params: dict[str, Any] = {
-            "query": " ".join(search_parts),
+            "query": self._last_query_sent,
             "page": 1,
             "num_pages": 1,
         }
 
         try:
             data = await self.fetch_json(url, params=params, headers=headers)
+            self._last_http_status = 200
         except Exception as exc:
-            logger.error("JSearch API request failed: %s", exc)
-            raise
+            import httpx
+            status = getattr(self, "_last_http_status", None)
+            if isinstance(exc, httpx.HTTPStatusError):
+                status = exc.response.status_code
+                self._last_http_status = status
+                msg = exc.response.text
+                try:
+                    j = exc.response.json()
+                    msg = j.get("message") or j.get("error") or msg
+                except Exception:
+                    pass
+                clean_err = f"HTTP {status}: {msg}"
+            else:
+                clean_err = str(exc)
+            logger.warning("JSearch API request failed (%s): %s", status, clean_err)
+            raise RuntimeError(clean_err) from exc
 
         raw_jobs = data.get("data", []) if isinstance(data, dict) else []
         postings: list[JobPosting] = []

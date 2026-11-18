@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import re
-from typing import Self
+from typing import Any, Self
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -74,10 +74,33 @@ class JobPosting(BaseModel):
         description="Seniority level (e.g. entry, junior, mid, senior, lead, staff)",
         examples=["senior"],
     )
+    employment_type: str | None = Field(
+        default=None,
+        description="Employment type (full-time, part-time, contract, internship, freelance)",
+        examples=["full-time"],
+    )
+    company_size: str | None = Field(
+        default=None,
+        description="Company size classification (startup, mid, large)",
+        examples=["startup"],
+    )
+    industry: str | None = Field(
+        default=None,
+        description="Industry or domain",
+        examples=["AI/ML"],
+    )
     is_demo: bool = Field(
         default=False,
         description="Flag indicating synthetic/demo data (only when USE_DEMO_JOBS is enabled)",
         examples=[False],
+    )
+    location_badge: str | None = Field(
+        default=None,
+        description="User-facing formatted location badge (e.g., 'Remote (worldwide)', 'Remote (France)')",
+    )
+    duplicate_locations: list[str] = Field(
+        default_factory=list,
+        description="Additional regions/locations this exact role is also posted for",
     )
 
     @field_validator("currency")
@@ -130,6 +153,110 @@ class JobQuery(BaseModel):
         default="",
         description="Search keywords (role title, domain, or technology)",
         examples=["Full Stack Engineer"],
+    )
+    target_titles: list[str] = Field(
+        default_factory=list,
+        description="Target job titles (multi-select)",
+        examples=[["Full Stack Engineer", "AI Engineer"]],
+    )
+    employment_types: list[str] = Field(
+        default_factory=list,
+        description="Employment types: full-time, part-time, contract, internship, freelance",
+        examples=[["full-time", "contract"]],
+    )
+    experience_levels: list[str] = Field(
+        default_factory=list,
+        description="Experience levels: internship, entry, mid, senior, lead",
+        examples=[["mid", "senior"]],
+    )
+    work_modes: list[str] = Field(
+        default_factory=list,
+        description="Work modes: remote, hybrid, on-site",
+        examples=[["remote", "hybrid"]],
+    )
+    locations: list[Any] = Field(
+        default_factory=list,
+        description="Target locations (country, city, or strings)",
+        examples=[[{"country": "US", "city": "San Francisco"}]],
+    )
+    open_to_relocation: bool = Field(
+        default=False,
+        description="Whether user is open to relocation",
+    )
+    remote_worldwide: bool = Field(
+        default=False,
+        description="Whether user is looking for remote worldwide positions",
+    )
+    visa_sponsorship_needed: bool = Field(
+        default=False,
+        description="Whether visa sponsorship / work authorization is needed",
+    )
+    preferred_countries: list[str] = Field(
+        default_factory=list,
+        description="Preferred countries for sponsorship / relocation",
+        examples=[["US", "DE", "UK"]],
+    )
+    salary_currency: str = Field(
+        default="USD",
+        description="Salary currency ISO code",
+    )
+    salary_min: float | None = Field(
+        default=None,
+        ge=0.0,
+        description="Minimum target salary",
+        examples=[120000.0],
+    )
+    salary_period: str = Field(
+        default="yearly",
+        description="Salary period (monthly or yearly)",
+    )
+    hide_without_salary: bool = Field(
+        default=False,
+        description="Hide jobs that do not disclose salary",
+    )
+    must_have_skills: list[str] = Field(
+        default_factory=list,
+        description="Mandatory skills required in matches",
+        examples=[["Python", "FastAPI"]],
+    )
+    nice_to_have_skills: list[str] = Field(
+        default_factory=list,
+        description="Optional preferred skills",
+        examples=[["Docker", "Kubernetes"]],
+    )
+    industries: list[str] = Field(
+        default_factory=list,
+        description="Target industries/domains (fintech, healthtech, AI/ML, etc.)",
+        examples=[["AI/ML", "Fintech"]],
+    )
+    company_sizes: list[str] = Field(
+        default_factory=list,
+        description="Target company sizes: startup, mid, large",
+        examples=[["startup", "mid"]],
+    )
+    date_posted: str = Field(
+        default="all",
+        description="Posting freshness filter: 24h, 3d, 7d, 30d, all",
+        examples=["7d"],
+    )
+    excluded_keywords: list[str] = Field(
+        default_factory=list,
+        description="Keywords to filter out from job titles/descriptions",
+        examples=[["crypto", "wordpress"]],
+    )
+    excluded_companies: list[str] = Field(
+        default_factory=list,
+        description="Companies to exclude from results",
+        examples=[["SpamCorp"]],
+    )
+    role_families: list[str] = Field(
+        default_factory=list,
+        description="Role families to include (software, data/AI, etc.)",
+        examples=[["software", "data/AI"]],
+    )
+    also_show_other_roles: bool = Field(
+        default=False,
+        description="Whether to also show roles outside the primary families (defaults to False)",
     )
     location: str | None = Field(
         default=None,
@@ -184,17 +311,73 @@ class SourceStatus(BaseModel):
     count: int = Field(
         default=0,
         ge=0,
-        description="Number of raw job postings returned from this source",
+        description="Number of filtered job postings kept from this source",
+    )
+    raw_fetched: int = Field(
+        default=0,
+        ge=0,
+        description="Number of raw job postings fetched before local filtering",
+    )
+    after_dedupe: int = Field(
+        default=0,
+        ge=0,
+        description="Count after deduplication",
+    )
+    after_local_filters: int = Field(
+        default=0,
+        ge=0,
+        description="Count after aggregator local filtering",
+    )
+    query_sent: str = Field(
+        default="",
+        description="Query string or parameters sent to the upstream provider",
+    )
+    http_status: int | None = Field(
+        default=None,
+        description="HTTP response status code from upstream API (e.g. 200, 403, 404)",
     )
     error: str | None = Field(
         default=None,
-        description="Error detail message if the source failed",
+        description="Error detail message if the source failed or was skipped",
     )
     duration_ms: float = Field(
         default=0.0,
         ge=0.0,
         description="Execution duration in milliseconds",
     )
+    local_filters_applied: list[str] = Field(
+        default_factory=list,
+        description="Filters applied locally by aggregator for this source",
+    )
+    filter_breakdown: dict[str, int] = Field(
+        default_factory=dict,
+        description="Per-filter breakdown of jobs removed by each filter criterion",
+    )
+
+
+class SearchDiagnostics(BaseModel):
+    """Observability diagnostics for job discovery and ranking stages."""
+
+    sources: dict[str, dict[str, Any]] = Field(
+        default_factory=dict,
+        description="Per-source diagnostic metrics (query_sent, http_status, raw_fetched, etc.)",
+    )
+    raw_fetched: int = Field(default=0, description="Total raw jobs fetched across all sources")
+    after_dedupe: int = Field(default=0, description="Total jobs after deduplication")
+    after_local_filters: int = Field(default=0, description="Total jobs after local filters")
+    preselected: int = Field(default=0, description="Total candidate jobs pre-selected for embedding/ranking")
+    candidate_cap: int | None = Field(default=None, description="Explicit candidate cap if applied")
+    truncated_by: str | None = Field(default=None, description="Reason or stage for any candidate reduction")
+    after_hard_filters: int = Field(default=0, description="Total jobs passing hard constraints")
+    ranked: int = Field(default=0, description="Total ranked matches produced")
+    main_filter_removed: str | None = Field(default=None, description="Primary constraint that removed jobs")
+    filter_breakdown: dict[str, int] = Field(
+        default_factory=dict,
+        description="Total breakdown of jobs removed per filter criterion",
+    )
+    fallback_used: bool = Field(default=False, description="Whether adaptive relaxation fallback was triggered")
+    fallback_stage: str = Field(default="strict", description="Fallback stage: strict, broad_soft_relaxed, broad_family_relaxed")
+    timings: dict[str, float] = Field(default_factory=dict, description="Stage timings in seconds")
 
 
 class SearchJobsResult(BaseModel):
@@ -222,4 +405,8 @@ class SearchJobsResult(BaseModel):
     source_statuses: list[SourceStatus] = Field(
         default_factory=list,
         description="Detailed per-source execution outcome",
+    )
+    diagnostics: SearchDiagnostics | None = Field(
+        default=None,
+        description="Comprehensive discovery pipeline diagnostics and filter dropouts",
     )
