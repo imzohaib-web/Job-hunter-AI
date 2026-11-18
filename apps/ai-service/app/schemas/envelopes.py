@@ -2,14 +2,14 @@ from __future__ import annotations
 
 import uuid
 from datetime import UTC, datetime
-from typing import Generic, TypeVar
+from typing import Any, Generic, TypeVar
 
 from pydantic import BaseModel, Field
 
 from app.schemas.company import CompanyInsight
 from app.schemas.fabrication import FabricationReport
-from app.schemas.job import JobPosting, SearchJobsResult
-from app.schemas.match import MatchResult, RankResponseData
+from app.schemas.job import JobPosting, JobQuery, SearchJobsResult, SourceStatus
+from app.schemas.match import CandidatePreferences, MatchResult, RankedJobItem, RankResponseData
 from app.schemas.profile import ParsedProfile
 from app.schemas.tailoring import TailoredResume
 
@@ -167,3 +167,49 @@ class CheckFabricationRequest(BaseModel):
 
 class CheckFabricationResponse(ApiResponse[FabricationReport]):
     """Response containing truthfulness audit results."""
+
+
+class DiscoverJobsRequest(BaseModel):
+    """Request payload for unified discovery, filtering, and hybrid ranking."""
+
+    profile: ParsedProfile = Field(description="Candidate profile")
+    preferences: CandidatePreferences | None = Field(
+        default=None,
+        description="Candidate soft preferences and hard constraints",
+    )
+    query: JobQuery | None = Field(
+        default=None,
+        description="Optional explicit search query filters",
+    )
+    sources: list[str] | None = Field(
+        default=None,
+        description="Optional source whitelist (e.g. ['remotive', 'arbeitnow', 'greenhouse'])",
+    )
+    llm_rerank: bool = Field(
+        default=False,
+        description="Whether to run secondary LLM structured rerank on top 15 candidates",
+    )
+
+
+class DiscoverJobsData(BaseModel):
+    """Output payload of unified discovery and ranking run."""
+
+    ranked_jobs: list[RankedJobItem] = Field(default_factory=list)
+    total: int = Field(default=0)
+    unfiltered_count: int = Field(default=0)
+    hard_filtered_count: int = Field(default=0)
+    source_statuses: list[SourceStatus] = Field(default_factory=list)
+    diagnostics: dict[str, Any] = Field(default_factory=dict)
+    tier_counts: dict[str, int] = Field(default_factory=dict)
+    timings: dict[str, float] = Field(default_factory=dict)
+    fallback_used: bool = Field(default=False)
+    fallback_stage: str = Field(default="strict")
+
+
+class DiscoverJobsResponse(ApiResponse[DiscoverJobsData]):
+    """Response containing unified discovery and ranking output."""
+
+
+DiscoverJobsData.model_rebuild()
+DiscoverJobsResponse.model_rebuild()
+

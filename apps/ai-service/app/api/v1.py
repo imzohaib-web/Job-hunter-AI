@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import time
+from typing import Any
 
 from fastapi import APIRouter, File, HTTPException, Response, UploadFile, status
 
@@ -14,6 +15,9 @@ from app.schemas.envelopes import (
     CheckFabricationResponse,
     CompanyResearchRequest,
     CompanyResearchResponse,
+    DiscoverJobsData,
+    DiscoverJobsRequest,
+    DiscoverJobsResponse,
     ExportResumeDocxRequest,
     MatchJobRequest,
     MatchJobResponse,
@@ -26,6 +30,7 @@ from app.schemas.envelopes import (
 from app.schemas.job import JobQuery
 from app.schemas.match import JobWithEmbedding, RankRequest
 from app.services.company_research import CompanyResearchAgent, SSRFSecurityError
+from app.services.discovery_pipeline import run_discovery
 from app.services.job_sources import JobSourceAggregator
 from app.services.ranking import HybridRankingAgent
 from app.services.tailoring import (
@@ -114,6 +119,81 @@ async def search_jobs(payload: JobQuery) -> SearchJobsResponse:
         warnings=warnings,
         meta=ApiMeta(duration_ms=duration_ms),
     )
+
+
+@router.get(
+    "/v1/sources",
+    summary="List available job sources, credentials status, and supported filters",
+)
+@router.get(
+    "/api/v1/jobs/sources",
+    summary="List available job sources, credentials status, and supported filters",
+)
+async def get_job_sources() -> dict[str, Any]:
+    aggregator = JobSourceAggregator()
+    return {"sources": aggregator.get_source_statuses()}
+
+
+@router.post(
+    "/v1/discover",
+    response_model=DiscoverJobsResponse,
+    summary="Unified job discovery, deduplication, filtering, and hybrid ranking in a single pass",
+)
+@router.post(
+    "/api/v1/jobs/discover",
+    response_model=DiscoverJobsResponse,
+    summary="Unified job discovery, deduplication, filtering, and hybrid ranking in a single pass",
+)
+async def discover_jobs(payload: DiscoverJobsRequest) -> DiscoverJobsResponse:
+    start_time = time.perf_counter()
+    try:
+        result = await run_discovery(
+            profile=payload.profile,
+            preferences=payload.preferences,
+            query=payload.query,
+            sources=payload.sources,
+            llm_rerank=payload.llm_rerank,
+        )
+        duration_ms = (time.perf_counter() - start_time) * 1000
+
+        warnings: list[str] = []
+        for st in result.get("source_statuses", []):
+            st_val = getattr(st, "status", None)
+            st_name = getattr(st, "source", "")
+            st_err = getattr(st, "error", "")
+            if st_val in ("error", "failed"):
+                warnings.append(f"Source '{st_name}' error: {st_err}")
+            elif st_val == "skipped" and st_err:
+                warnings.append(f"Source '{st_name}' skipped: {st_err}")
+
+        data = DiscoverJobsData(
+            ranked_jobs=result["ranked_jobs"],
+            total=result["total"],
+            unfiltered_count=result["unfiltered_count"],
+            hard_filtered_count=result["hard_filtered_count"],
+            source_statuses=result["source_statuses"],
+            diagnostics=result["diagnostics"],
+            tier_counts=result["tier_counts"],
+            timings=result["timings"],
+            fallback_used=result["fallback_used"],
+            fallback_stage=result["fallback_stage"],
+        )
+
+        return DiscoverJobsResponse(
+            data=data,
+            warnings=warnings,
+            meta=ApiMeta(duration_ms=duration_ms),
+        )
+    except Exception as exc:
+        logger.exception("Unified job discovery failed: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "code": "DISCOVERY_FAILED",
+                "message": str(exc),
+                "details": {"error_type": type(exc).__name__},
+            },
+        ) from exc
 
 
 @router.post(

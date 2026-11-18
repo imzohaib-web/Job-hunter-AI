@@ -20,7 +20,7 @@ class ServiceKeyMiddleware(BaseHTTPMiddleware):
         request: Request,
         call_next: Callable[[Request], Awaitable[Response]],
     ) -> Response:
-        if request.url.path == "/health":
+        if request.url.path in ("/health", "/ready", "/version", "/api/version"):
             return await call_next(request)
 
         provided = request.headers.get("X-Service-Key")

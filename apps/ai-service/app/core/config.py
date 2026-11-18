@@ -6,6 +6,8 @@ from functools import lru_cache
 from pydantic import Field, ValidationError
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+PIPELINE_VERSION: str = "2026-11-17-v3"
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
@@ -18,6 +20,10 @@ class Settings(BaseSettings):
     host: str = "0.0.0.0"
     port: int = 8000
     log_level: str = "info"
+
+    git_sha: str = Field(default="dev", alias="GIT_SHA")
+    build_time: str = Field(default="unknown", alias="BUILD_TIME")
+    pipeline_version: str = Field(default=PIPELINE_VERSION, alias="PIPELINE_VERSION")
 
     ai_service_key: str = Field(min_length=1)
 

@@ -107,6 +107,14 @@ class MatchResult(BaseModel):
         default=None,
         description="Justification for LLM score adjustment",
     )
+    fallback_stage: str = Field(
+        default="strict",
+        description="Which adaptive pass produced this match: strict, broad_soft_relaxed, or broad_family_relaxed",
+    )
+    tier: str = Field(
+        default="possible",
+        description="Score tier: strong (>=70), good (50-69), possible (30-49), or stretch (<30 or senior above level)",
+    )
 
     @field_validator("explanation")
     @classmethod
@@ -175,8 +183,12 @@ class RankingWeights(BaseModel):
 
 
 class CandidatePreferences(BaseModel):
-    """Candidate constraints and preferences for deterministic hard filtering."""
+    """Candidate constraints and preferences for deterministic hard filtering and soft penalties."""
 
+    target_titles: list[str] = Field(
+        default_factory=list,
+        description="Target job titles preferred by candidate",
+    )
     location: str | None = Field(
         default=None,
         description="Preferred geographic location or country",
@@ -185,6 +197,11 @@ class CandidatePreferences(BaseModel):
     remote_only: bool = Field(
         default=False,
         description="Strictly require fully remote roles",
+        examples=[True],
+    )
+    remote_worldwide: bool = Field(
+        default=False,
+        description="Accept remote roles worldwide / global",
         examples=[True],
     )
     excluded_companies: list[str] = Field(
@@ -196,6 +213,26 @@ class CandidatePreferences(BaseModel):
         default_factory=list,
         description="Keywords to exclude from job titles or descriptions",
         examples=[["crypto", "gambling"]],
+    )
+    employment_types: list[str] = Field(
+        default_factory=list,
+        description="Preferred employment types (full-time, contract, etc.)",
+    )
+    experience_levels: list[str] = Field(
+        default_factory=list,
+        description="Preferred experience levels (junior, mid, senior, etc.)",
+    )
+    work_modes: list[str] = Field(
+        default_factory=list,
+        description="Preferred work modes (remote, hybrid, on-site)",
+    )
+    salary_min: float | None = Field(
+        default=None,
+        description="Target minimum annual salary",
+    )
+    required_fields: list[str] = Field(
+        default_factory=list,
+        description="Fields explicitly marked 'required' by user (hard filter)",
     )
     work_authorization: str | None = Field(
         default=None,
@@ -252,6 +289,14 @@ class RankedJobItem(BaseModel):
         default=None,
         description="Embedding vector (returned for persistence in MongoDB Atlas)",
     )
+    fallback_stage: str = Field(
+        default="strict",
+        description="Which adaptive pass produced this match: strict, broad_soft_relaxed, or broad_family_relaxed",
+    )
+    tier: str = Field(
+        default="possible",
+        description="Score tier: strong (>=70), good (50-69), possible (30-49), or stretch (<30 or senior above level)",
+    )
 
 
 class RankResponseData(BaseModel):
@@ -272,4 +317,20 @@ class RankResponseData(BaseModel):
     new_embeddings_generated: int = Field(
         ge=0,
         description="Number of newly computed vector embeddings",
+    )
+    fallback_used: bool = Field(
+        default=False,
+        description="Whether adaptive fallback was activated to ensure >= 10 results",
+    )
+    fallback_stage: str = Field(
+        default="strict",
+        description="Final fallback stage: strict, broad_soft_relaxed, or broad_family_relaxed",
+    )
+    preselected_count: int = Field(
+        default=0,
+        description="Count of candidate jobs pre-selected before embedding generation",
+    )
+    timings: dict[str, float] = Field(
+        default_factory=dict,
+        description="Timing breakdown in seconds for ranking stages",
     )

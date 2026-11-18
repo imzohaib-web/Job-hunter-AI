@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import asyncio
 import logging
+import os
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from typing import Any
@@ -19,12 +21,11 @@ logger = logging.getLogger("jobpilot.main")
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
-    try:
-        from app.embeddings.model import get_embedding_model
+    # Non-blocking model preload: allow Uvicorn to bind and serve /health immediately
+    if os.environ.get("ENVIRONMENT") != "test" and "PYTEST_CURRENT_TEST" not in os.environ:
+        from app.embeddings.model import preload_embedding_model_background
 
-        get_embedding_model()
-    except Exception as exc:  # noqa: BLE001
-        logger.warning("Could not preload embedding model at startup: %s", exc)
+        asyncio.create_task(preload_embedding_model_background())
     yield
 
 
