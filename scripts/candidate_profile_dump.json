@@ -1,0 +1,441 @@
+{
+  "user": {
+    "_id": "6afa9256f4e547dd0f397439",
+    "email": "umerzohaibumer@gmail.com",
+    "passwordHash": "REDACTED",
+    "name": "zohaib umer",
+    "role": "user",
+    "quota": {
+      "dailyAiRequests": 0,
+      "lastResetDate": "2026-11-16",
+      "dailyLimit": 50
+    },
+    "createdAt": "2026-11-16T05:19:18.884Z",
+    "updatedAt": "2026-11-16T05:19:18.884Z",
+    "__v": 0
+  },
+  "verifiedProfile": {
+    "name": "ZOHAIB UMER",
+    "email": "umerzohaibumer@gmail.com",
+    "phone": null,
+    "location": "Wah Cantt, Punjab, Pakistan",
+    "links": [
+      "https://github.com/imzohaib-web",
+      "https://linkedin.com/in/zohaib-umer"
+    ],
+    "summary": "Final-year Software Engineering student building backend and AI-integrated applications. Experience with Node.js/Express and FastAPI REST APIs, MongoDB data modeling and JWT authentication, plus LLM-powered products using RAG, vector search and multi-agent workflows. Built and deployed CareerPilot AI, a hackathon finalist project.",
+    "skills": [
+      {
+        "name": "Python",
+        "category": "Languages",
+        "years": null,
+        "evidence": "Listed under Languages"
+      },
+      {
+        "name": "JavaScript",
+        "category": "Languages",
+        "years": null,
+        "evidence": "Listed under Languages"
+      },
+      {
+        "name": "TypeScript",
+        "category": "Languages",
+        "years": null,
+        "evidence": "Listed under Languages"
+      },
+      {
+        "name": "Java",
+        "category": "Languages",
+        "years": null,
+        "evidence": "Listed under Languages"
+      },
+      {
+        "name": "C++",
+        "category": "Languages",
+        "years": null,
+        "evidence": "Listed under Languages"
+      },
+      {
+        "name": "Node.js",
+        "category": "Frameworks",
+        "years": null,
+        "evidence": "Backend skill"
+      },
+      {
+        "name": "Express.js",
+        "category": "Frameworks",
+        "years": null,
+        "evidence": "Backend skill"
+      },
+      {
+        "name": "FastAPI",
+        "category": "Frameworks",
+        "years": null,
+        "evidence": "Backend skill"
+      },
+      {
+        "name": "React",
+        "category": "Frameworks",
+        "years": null,
+        "evidence": "Frontend skill"
+      },
+      {
+        "name": "Vite",
+        "category": "Frameworks",
+        "years": null,
+        "evidence": "Frontend tool"
+      },
+      {
+        "name": "Tailwind CSS",
+        "category": "Frameworks",
+        "years": null,
+        "evidence": "Frontend tool"
+      },
+      {
+        "name": "MongoDB",
+        "category": "Databases",
+        "years": null,
+        "evidence": "Primary database"
+      },
+      {
+        "name": "SQLite",
+        "category": "Databases",
+        "years": null,
+        "evidence": "Listed under Databases"
+      },
+      {
+        "name": "MySQL",
+        "category": "Databases",
+        "years": null,
+        "evidence": "Listed under Databases"
+      },
+      {
+        "name": "FAISS",
+        "category": "Databases",
+        "years": null,
+        "evidence": "Vector database for embeddings"
+      },
+      {
+        "name": "ChromaDB",
+        "category": "Databases",
+        "years": null,
+        "evidence": "Vector database for embeddings"
+      },
+      {
+        "name": "Git",
+        "category": "Tools",
+        "years": null,
+        "evidence": "Collaboration tool"
+      },
+      {
+        "name": "GitHub",
+        "category": "Tools",
+        "years": null,
+        "evidence": "Collaboration platform"
+      },
+      {
+        "name": "Postman",
+        "category": "Tools",
+        "years": null,
+        "evidence": "API testing"
+      },
+      {
+        "name": "pytest",
+        "category": "Tools",
+        "years": null,
+        "evidence": "Testing framework"
+      },
+      {
+        "name": "VS Code",
+        "category": "Tools",
+        "years": null,
+        "evidence": "IDE"
+      },
+      {
+        "name": "Vercel",
+        "category": "Cloud",
+        "years": null,
+        "evidence": "Frontend deployment"
+      },
+      {
+        "name": "Render",
+        "category": "Cloud",
+        "years": null,
+        "evidence": "Backend deployment"
+      },
+      {
+        "name": "MongoDB Atlas",
+        "category": "Cloud",
+        "years": null,
+        "evidence": "Managed DB service"
+      },
+      {
+        "name": "Groq",
+        "category": "Cloud",
+        "years": null,
+        "evidence": "LLM inference provider"
+      },
+      {
+        "name": "Qwen via Alibaba Cloud Model Studio",
+        "category": "Cloud",
+        "years": null,
+        "evidence": "LLM model used in projects"
+      },
+      {
+        "name": "LLM API integration",
+        "category": "AI / LLM",
+        "years": null,
+        "evidence": "Skill listed"
+      },
+      {
+        "name": "RAG",
+        "category": "AI / LLM",
+        "years": null,
+        "evidence": "Skill listed"
+      },
+      {
+        "name": "LangChain",
+        "category": "AI / LLM",
+        "years": null,
+        "evidence": "Skill listed"
+      },
+      {
+        "name": "Vector databases",
+        "category": "AI / LLM",
+        "years": null,
+        "evidence": "FAISS, ChromaDB"
+      },
+      {
+        "name": "Prompt engineering",
+        "category": "AI / LLM",
+        "years": null,
+        "evidence": "Skill listed"
+      },
+      {
+        "name": "Multi-agent workflows",
+        "category": "AI / LLM",
+        "years": null,
+        "evidence": "Skill listed"
+      }
+    ],
+    "experience": [
+      {
+        "company": "EziTech (Eziline Software House)",
+        "title": "MERN Stack Developer Intern",
+        "start": "2026-06",
+        "end": "2026-09",
+        "bullets": [
+          "Built Fabric Hub, a MERN e-commerce platform, independently: Express/Node REST API over six MongoDB collections (Users, Categories, Products, Orders, Reviews, Wishlist) with Mongoose schemas, JWT authentication via httpOnly cookies, and a React client.",
+          "Developed REST API endpoints and React UI features for Enterprise LMS, a team-built MERN platform, using MongoDB, Express, React and Node.js.",
+          "Collaborated through Git/GitHub branches and pull requests, and tested APIs with Postman."
+        ]
+      },
+      {
+        "company": "Erudite Coaching Center",
+        "title": "Front-End Developer",
+        "start": "2025-08",
+        "end": "2025-12",
+        "bullets": [
+          "Built responsive React interfaces that consume REST APIs for dynamic data rendering."
+        ]
+      }
+    ],
+    "education": [
+      {
+        "institution": "COMSATS University Islamabad, Wah Campus",
+        "degree": "BS Software Engineering",
+        "field_of_study": "Software Engineering",
+        "gpa": "3.3 / 4.0"
+      },
+      {
+        "institution": "The Scholar Science College, Wah Cantt",
+        "degree": "FSc Pre-Engineering",
+        "field_of_study": "Pre-Engineering",
+        "gpa": null
+      }
+    ],
+    "projects": [
+      {
+        "name": "CareerPilot AI",
+        "description": "AI Career Mentor & Interview Coach platform selected for Alibaba Cloud AI Hackathon Pakistan 2026 finale. Includes six AI-driven modules (Resume Analyzer, Skill Gap Analysis, Personalized Roadmap, AI Career Mentor, AI Mock Interview, Progress Dashboard) powered by Qwen on Alibaba Cloud Model Studio.",
+        "technologies": [
+          "React",
+          "TypeScript",
+          "FastAPI",
+          "MongoDB",
+          "Qwen",
+          "Vercel",
+          "Render",
+          "MongoDB Atlas"
+        ]
+      },
+      {
+        "name": "AI-Powered Adaptive Learning Platform",
+        "description": "Textbook‑grounded RAG tutor and chat assistant for FBISE Math/Science curriculum, generating AI quizzes, adaptive revision triggers, and per‑topic mastery scores.",
+        "technologies": [
+          "Python",
+          "RAG",
+          "LangChain",
+          "FAISS",
+          "ChromaDB"
+        ]
+      },
+      {
+        "name": "Multi-Agent AI Job Search Automation System",
+        "description": "Designed an 11‑agent pipeline automating job discovery, matching and application tracking. Built with Groq (Llama 3) for inference, ChromaDB for semantic matching, python‑jobspy for sourcing listings, and SQLite for persistence.",
+        "technologies": [
+          "Groq",
+          "Llama 3",
+          "ChromaDB",
+          "python-jobspy",
+          "SQLite"
+        ]
+      }
+    ],
+    "certifications": [
+      {
+        "name": "Generative AI & Chatbot Development",
+        "issuer": "Bano Qabil",
+        "date": "2026"
+      },
+      {
+        "name": "Prompt Engineering for ChatGPT",
+        "issuer": "Coursera",
+        "date": "2025"
+      },
+      {
+        "name": "AI For Everyone",
+        "issuer": "Coursera",
+        "date": "2025"
+      },
+      {
+        "name": "Programming for Everybody (Python)",
+        "issuer": "Coursera",
+        "date": "2025"
+      },
+      {
+        "name": "English Access Scholarship Program",
+        "issuer": "U.S. Embassy",
+        "date": null
+      }
+    ],
+    "languages": [
+      {
+        "language": "English",
+        "proficiency": "native"
+      }
+    ],
+    "field_confidence": {
+      "name": 0.98,
+      "email": 0.99,
+      "phone": 0,
+      "location": 0.9,
+      "summary": 0.95,
+      "skills": 0.95,
+      "experience": 0.98,
+      "education": 0.95,
+      "projects": 0.9
+    }
+  },
+  "lastSearchQuery": {
+    "keywords": "MERN Stack Developer Intern",
+    "location": "Wah Cantt, Punjab, Pakistan",
+    "remoteOnly": true,
+    "seniority": "internship",
+    "sources": [
+      "remotive",
+      "arbeitnow",
+      "greenhouse",
+      "jsearch",
+      "lever"
+    ],
+    "preferences": {
+      "targetTitles": [
+        "MERN Stack Developer Intern",
+        "Front-End Developer",
+        "Backend Engineer"
+      ],
+      "employmentTypes": [
+        "full-time"
+      ],
+      "experienceLevels": [
+        "internship",
+        "entry"
+      ],
+      "workModes": [
+        "remote",
+        "hybrid"
+      ],
+      "locations": [
+        {
+          "country": "",
+          "city": "Wah Cantt, Punjab, Pakistan",
+          "label": "Wah Cantt, Punjab, Pakistan"
+        },
+        {
+          "country": "",
+          "city": "islamabad",
+          "label": "islamabad"
+        },
+        {
+          "country": "",
+          "city": "berlin",
+          "label": "berlin"
+        },
+        {
+          "country": "USA",
+          "city": "",
+          "label": "USA"
+        },
+        {
+          "country": "",
+          "city": "Dubai",
+          "label": "Dubai"
+        }
+      ],
+      "openToRelocation": false,
+      "remoteWorldwide": true,
+      "visaSponsorshipNeeded": false,
+      "preferredCountries": [],
+      "salary": {
+        "currency": "USD",
+        "minimum": 1000,
+        "period": "yearly",
+        "hideWithoutSalary": false
+      },
+      "mustHaveSkills": [
+        "Python",
+        "JavaScript",
+        "TypeScript",
+        "Java"
+      ],
+      "niceToHaveSkills": [],
+      "industries": [
+        "AI / Machine Learning",
+        "Cloud & DevOps",
+        "E-commerce",
+        "SaaS",
+        "Healthtech",
+        "Fintech"
+      ],
+      "companySizes": [
+        "startup",
+        "mid"
+      ],
+      "datePosted": "all",
+      "excludedKeywords": [],
+      "excludedCompanies": [],
+      "roleFamilies": [
+        "software"
+      ],
+      "alsoShowOtherRoles": true,
+      "sources": [
+        "remotive",
+        "arbeitnow",
+        "greenhouse",
+        "jsearch",
+        "lever"
+      ]
+    }
+  }
+}

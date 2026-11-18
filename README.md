@@ -63,3 +63,18 @@ cd apps/ai-service && uvicorn app.main:app --reload --port 8000
 - API: http://localhost:3001/api/health
 - Deep: http://localhost:3001/api/health/deep
 - AI service: http://localhost:8000/health (requires `X-Service-Key` on non-health routes)
+- AI readiness: http://localhost:8000/ready (returns 200 when embedding model is loaded, 503 while loading)
+
+## Troubleshooting
+
+### Docker Resource Allocation
+- **Memory Requirement**: Docker Desktop requires at least **4 GB of RAM** (6 GB recommended) allocated in **Settings > Resources > Advanced** (or WSL 2 `.wslconfig`). The AI service utilizes PyTorch and SentenceTransformer (`all-MiniLM-L6-v2`) for semantic ranking, running concurrently with MongoDB, Redis, Node API, and Vite web server.
+- **Slow Startup or Unhealthy Containers**:
+  - The AI service implements a lightweight, non-blocking liveness probe (`/health`) that responds with 200 OK immediately at boot.
+  - The heavy embedding model is pre-downloaded at build time and cached in the `ai_model_cache` volume (`/app/models/cache`).
+  - Model initialization runs asynchronously in a background thread during application startup. The `/ready` endpoint reports 503 until model weights are in memory, then switches to 200.
+  - To inspect live container health logs:
+    ```bash
+    docker inspect --format "{{json .State.Health}}" job-hunt-agent-v2-ai-service-1
+    ```
+- **Port Conflicts**: Ensure ports 5173, 3001, 8000, 27017, and 6379 are not occupied by local background processes before running `docker compose up`.

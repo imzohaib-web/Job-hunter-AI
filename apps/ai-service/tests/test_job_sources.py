@@ -13,9 +13,13 @@ from app.services.job_sources.adzuna import AdzunaSource
 from app.services.job_sources.arbeitnow import ArbeitnowSource
 from app.services.job_sources.demo import DemoSource
 from app.services.job_sources.greenhouse import GreenhouseBoardSource
+from app.services.job_sources.himalayas import HimalayasSource
+from app.services.job_sources.jobicy import JobicySource
 from app.services.job_sources.jsearch import JSearchSource
 from app.services.job_sources.lever import LeverBoardSource
+from app.services.job_sources.remoteok import RemoteOKSource
 from app.services.job_sources.remotive import RemotiveSource
+from app.services.job_sources.weworkremotely import WeWorkRemotelySource
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures" / "job_sources"
 
@@ -337,3 +341,112 @@ async def test_lever_keyword_filtering_relevance() -> None:
     assert len(jobs) == 1
     assert jobs[0].external_id == "spotify-lev-101"
     assert jobs[0].title == "Full Stack Developer"
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_remoteok_source() -> None:
+    fake_data = [
+        {"legal": "Notice"},
+        {
+            "id": 991,
+            "position": "Senior React Developer",
+            "company": "RemoteTech",
+            "location": "Worldwide",
+            "description": "Building UI with React and TypeScript.",
+            "tags": ["react", "typescript"],
+            "url": "https://remoteok.com/l/991",
+            "date": "2026-11-15T12:00:00Z",
+        },
+    ]
+    respx.get("https://remoteok.com/api").mock(return_value=Response(200, json=fake_data))
+    source = RemoteOKSource()
+    jobs = await source.search(JobQuery(keywords="react"))
+    assert len(jobs) == 1
+    assert jobs[0].source == "remoteok"
+    assert jobs[0].title == "Senior React Developer"
+    assert jobs[0].remote is True
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_jobicy_source() -> None:
+    fake_data = {
+        "jobs": [
+            {
+                "id": "jobicy-1",
+                "jobTitle": "Full Stack Engineer",
+                "companyName": "Jobicy Corp",
+                "jobGeo": "Worldwide",
+                "jobDescription": "We need a Full Stack Engineer with Node.js and MongoDB.",
+                "url": "https://jobicy.com/jobs/1",
+                "annualSalaryMin": 70000,
+                "annualSalaryMax": 100000,
+                "salaryCurrency": "USD",
+                "pubDate": "2026-11-15T10:00:00Z",
+            }
+        ]
+    }
+    respx.get("https://jobicy.com/api/v2/remote-jobs").mock(return_value=Response(200, json=fake_data))
+    source = JobicySource()
+    jobs = await source.search(JobQuery(keywords="engineer"))
+    assert len(jobs) == 1
+    assert jobs[0].source == "jobicy"
+    assert jobs[0].title == "Full Stack Engineer"
+    assert jobs[0].salary_min == 70000.0
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_himalayas_source() -> None:
+    fake_data = {
+        "jobs": [
+            {
+                "id": "him-101",
+                "title": "Backend Python Developer",
+                "companyName": "Himalayas Tech",
+                "locationRestrictions": ["Worldwide"],
+                "description": "FastAPI and PostgreSQL development.",
+                "applicationLink": "https://himalayas.app/jobs/him-101",
+                "pubDate": "2026-11-15T14:00:00Z",
+            }
+        ]
+    }
+    respx.get("https://himalayas.app/jobs/api").mock(return_value=Response(200, json=fake_data))
+    source = HimalayasSource()
+    jobs = await source.search(JobQuery(keywords="python"))
+    assert len(jobs) == 1
+    assert jobs[0].source == "himalayas"
+    assert jobs[0].title == "Backend Python Developer"
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_weworkremotely_source() -> None:
+    rss_xml = """<?xml version="1.0" encoding="UTF-8"?>
+    <rss version="2.0">
+      <channel>
+        <title>We Work Remotely</title>
+        <item>
+          <title>Basecamp: Senior Ruby Programmer</title>
+          <link>https://weworkremotely.com/jobs/101</link>
+          <description>Build web apps in Ruby and Rails.</description>
+          <pubDate>Sun, 15 Nov 2026 12:00:00 +0000</pubDate>
+          <guid>https://weworkremotely.com/jobs/101</guid>
+        </item>
+      </channel>
+    </rss>
+    """
+    respx.get("https://weworkremotely.com/categories/remote-programming-jobs.rss").mock(
+        return_value=Response(200, content=rss_xml.encode("utf-8"))
+    )
+    respx.get("https://weworkremotely.com/categories/remote-devops-sysadmin-jobs.rss").mock(
+        return_value=Response(200, content=b"<rss><channel></channel></rss>")
+    )
+    source = WeWorkRemotelySource()
+    jobs = await source.search(JobQuery(keywords="developer"))
+    assert len(jobs) == 1
+    assert jobs[0].source == "weworkremotely"
+    assert jobs[0].company == "Basecamp"
+    assert jobs[0].title == "Senior Ruby Programmer"
+
