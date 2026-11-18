@@ -3,6 +3,7 @@ import {
   Briefcase,
   KanbanSquare,
   LayoutDashboard,
+  SlidersHorizontal,
   UserRound,
   type LucideIcon,
 } from "lucide-react";
@@ -17,6 +18,7 @@ export interface NavItem {
 export const navItems: readonly NavItem[] = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true },
   { to: "/jobs", label: "Jobs", icon: Briefcase },
+  { to: "/preferences", label: "Preferences", icon: SlidersHorizontal },
   { to: "/applications", label: "Applications", icon: KanbanSquare },
   { to: "/profile", label: "Profile", icon: UserRound },
   { to: "/analytics", label: "Analytics", icon: BarChart3 },

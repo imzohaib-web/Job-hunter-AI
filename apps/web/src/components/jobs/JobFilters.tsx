@@ -30,17 +30,18 @@ const SENIORITY_OPTIONS = [
 export function JobFilters({
   filters,
   onChange,
-  availableSources = ["all", "linkedin", "indeed", "adzuna", "greenhouse", "arbeitnow"],
+  availableSources = ["all"],
   totalCount,
   filteredCount,
   className = "",
 }: JobFiltersProps) {
   const isDirty =
-    filters.minScore > 0 ||
+    filters.minScore !== DEFAULT_FILTERS.minScore ||
     filters.remoteOnly ||
     filters.source !== "all" ||
     filters.seniority !== "all" ||
     filters.savedOnly ||
+    Boolean(filters.showLowMatches) ||
     filters.sort !== "score_desc";
 
   const handleReset = () => {
@@ -119,9 +120,27 @@ export function JobFilters({
             aria-label="Minimum match score"
           />
           <div className="flex justify-between text-[10px] text-muted-foreground/70">
-            <span>Any (0%)</span>
-            <span>60%</span>
-            <span>80%+</span>
+            <span>0%</span>
+            <span>30% (Default)</span>
+            <span>70%+</span>
+          </div>
+          <div className="flex items-center justify-between text-[11px] pt-1">
+            <label className="flex items-center gap-1.5 cursor-pointer text-muted-foreground hover:text-foreground">
+              <input
+                type="checkbox"
+                checked={Boolean(filters.showLowMatches || filters.minScore < 30)}
+                onChange={(e) => {
+                  const checked = e.target.checked;
+                  onChange({
+                    ...filters,
+                    showLowMatches: checked,
+                    minScore: checked ? 0 : 30,
+                  });
+                }}
+                className="h-3.5 w-3.5 rounded border-input text-primary focus:ring-primary"
+              />
+              <span>Show low matches (&lt;30%)</span>
+            </label>
           </div>
         </div>
 

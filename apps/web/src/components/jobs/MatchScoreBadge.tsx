@@ -2,6 +2,7 @@ import { cn } from "@/lib/utils";
 
 interface MatchScoreBadgeProps {
   score: number;
+  tier?: "strong" | "good" | "possible" | "stretch";
   size?: "sm" | "md" | "lg";
   className?: string;
   showLabel?: boolean;
@@ -9,6 +10,7 @@ interface MatchScoreBadgeProps {
 
 export function MatchScoreBadge({
   score,
+  tier,
   size = "sm",
   className,
   showLabel = false,
@@ -26,19 +28,38 @@ export function MatchScoreBadge({
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference - (clampedScore / 100) * circumference;
 
-  // Determine color theme based on score
+  // Derive tier if not explicitly passed
+  const effectiveTier =
+    tier ||
+    (clampedScore >= 70
+      ? "strong"
+      : clampedScore >= 50
+        ? "good"
+        : clampedScore >= 30
+          ? "possible"
+          : "stretch");
+
+  // Determine color theme based on score tier
+  // Strong (>=70) -> Emerald/Green
+  // Good (50-69) -> Sky/Blue
+  // Possible (30-49) -> Amber
+  // Stretch (<30) -> Slate/Grey
   let strokeColor = "stroke-emerald-500";
   let textColor = "text-emerald-600 dark:text-emerald-400";
   let bgColor = "bg-emerald-500/10";
 
-  if (clampedScore < 60) {
-    strokeColor = "stroke-rose-500";
-    textColor = "text-rose-600 dark:text-rose-400";
-    bgColor = "bg-rose-500/10";
-  } else if (clampedScore < 80) {
+  if (effectiveTier === "stretch") {
+    strokeColor = "stroke-slate-400 dark:stroke-slate-500";
+    textColor = "text-slate-600 dark:text-slate-400";
+    bgColor = "bg-slate-500/10";
+  } else if (effectiveTier === "possible") {
     strokeColor = "stroke-amber-500";
     textColor = "text-amber-600 dark:text-amber-400";
     bgColor = "bg-amber-500/10";
+  } else if (effectiveTier === "good") {
+    strokeColor = "stroke-sky-500";
+    textColor = "text-sky-600 dark:text-sky-400";
+    bgColor = "bg-sky-500/10";
   }
 
   return (

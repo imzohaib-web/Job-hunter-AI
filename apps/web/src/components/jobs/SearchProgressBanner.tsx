@@ -1,5 +1,6 @@
 import {
   AlertCircle,
+  AlertTriangle,
   CheckCircle2,
   ChevronDown,
   ChevronUp,
@@ -62,7 +63,7 @@ export function SearchProgressBanner({
   const streamUrl = searchId ? `/api/searches/${searchId}/events` : null;
 
   useSSE<string>(streamUrl, {
-    enabled: Boolean(searchId && status !== "completed" && status !== "failed"),
+    enabled: Boolean(searchId && status !== "completed" && status !== "completed_empty" && status !== "failed"),
     onMessage: (event: SseMessageEvent<string>) => {
       try {
         const raw = typeof event.data === "string" ? event.data : JSON.stringify(event.data);
@@ -99,8 +100,9 @@ export function SearchProgressBanner({
           setCompletedSources((prev) => new Set([...prev, data.source as string]));
         }
 
-        if (data.type === "completed" || data.status === "completed") {
-          setStatus("completed");
+        if (data.type === "completed" || data.status === "completed" || data.status === "completed_empty") {
+          const finalSt = data.status || "completed";
+          setStatus(finalSt);
           if (typeof data.resultsCount === "number") {
             onSearchCompleted?.(data.resultsCount);
           }
@@ -121,8 +123,9 @@ export function SearchProgressBanner({
   }
 
   const isSearching = status === "pending" || status === "running" || status === "processing";
+  const isCompletedEmpty = status === "completed_empty" || (status === "completed" && resultsCount === 0);
 
-  // Derive real active sources strictly from backend status responses
+  // Derive real active sources strictly from backend source statuses
   const activeSources: SourceStatusItem[] =
     sourceStatuses.length > 0
       ? sourceStatuses
@@ -139,7 +142,9 @@ export function SearchProgressBanner({
       className={`rounded-xl border ${
         status === "failed"
           ? "border-destructive/30 bg-destructive/5"
-          : "border-primary/20 bg-gradient-to-r from-primary/5 via-card to-primary/5"
+          : isCompletedEmpty
+            ? "border-amber-500/30 bg-amber-500/5 dark:bg-amber-950/10"
+            : "border-primary/20 bg-gradient-to-r from-primary/5 via-card to-primary/5"
       } p-4 shadow-sm backdrop-blur-sm transition-all ${className}`}
     >
       <div className="flex items-center justify-between gap-4">
@@ -148,13 +153,17 @@ export function SearchProgressBanner({
             className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
               isSearching
                 ? "bg-primary text-primary-foreground animate-pulse"
-                : status === "completed"
-                  ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
-                  : "bg-destructive/15 text-destructive"
+                : isCompletedEmpty
+                  ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
+                  : status === "completed"
+                    ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                    : "bg-destructive/15 text-destructive"
             }`}
           >
             {isSearching ? (
               <Loader2 className="h-5 w-5 animate-spin" />
+            ) : isCompletedEmpty ? (
+              <AlertTriangle className="h-5 w-5" />
             ) : status === "completed" ? (
               <CheckCircle2 className="h-5 w-5" />
             ) : status === "failed" ? (
@@ -169,23 +178,29 @@ export function SearchProgressBanner({
               <h4 className="text-sm font-semibold text-foreground">
                 {isSearching
                   ? "AI Discovery In Progress"
-                  : status === "completed"
-                    ? "Discovery Run Complete"
-                    : status === "failed"
-                      ? "Search Run Failed"
-                      : "Search Status"}
+                  : isCompletedEmpty
+                    ? "Discovery Completed (0 Matches)"
+                    : status === "completed"
+                      ? "Discovery Run Complete"
+                      : status === "failed"
+                        ? "Search Run Failed"
+                        : "Search Status"}
               </h4>
               <Badge
                 variant={
                   isSearching
                     ? "default"
-                    : status === "completed"
-                      ? "success"
-                      : status === "failed"
-                        ? "destructive"
-                        : "secondary"
+                    : isCompletedEmpty
+                      ? "outline"
+                      : status === "completed"
+                        ? "success"
+                        : status === "failed"
+                          ? "destructive"
+                          : "secondary"
                 }
-                className="text-[10px] uppercase font-bold tracking-wider"
+                className={`text-[10px] uppercase font-bold tracking-wider ${
+                  isCompletedEmpty ? "border-amber-500/40 text-amber-700 dark:text-amber-300 bg-amber-500/10" : ""
+                }`}
               >
                 {status}
               </Badge>
@@ -193,9 +208,12 @@ export function SearchProgressBanner({
             <p className="text-xs text-muted-foreground truncate">
               {isSearching
                 ? `Scraping, standardizing, and ranking matches across job networks (${resultsCount} found so far)`
-                : status === "failed"
-                  ? (errorMessage || "Discovery service encountered an error while searching jobs.")
-                  : `Discovered and scored ${resultsCount} candidate positions matching your verified profile.`}
+                : isCompletedEmpty
+                  ? initialSearch?.diagnostics?.mainFilterRemoved ||
+                    "All candidate positions were removed by active filter constraints."
+                  : status === "failed"
+                    ? errorMessage || "Discovery service encountered an error while searching jobs."
+                    : `Discovered and scored ${resultsCount} candidate positions matching your verified profile.`}
             </p>
           </div>
         </div>
@@ -232,27 +250,50 @@ export function SearchProgressBanner({
           <div className="flex flex-wrap gap-2">
             {activeSources.map((item) => {
               const count = item.count ?? perSourceCounts[item.source] ?? 0;
-              const isSkipped = item.status === "skipped";
-              const isFailed = item.status === "failed" || item.status === "error";
+              const isMissingKey =
+                item.status === "skipped" ||
+                item.reason?.toLowerCase().includes("no api key") ||
+                item.error?.toLowerCase().includes("no api key");
+              const isSkipped = item.status === "skipped" || isMissingKey;
+              const isFailed = !isMissingKey && (item.status === "failed" || item.status === "error");
+
+              const rawFetched = item.rawFetched;
               const tooltipReason =
-                item.reason ||
                 item.error ||
+                item.reason ||
                 (isSkipped
-                  ? "Skipped: Missing credentials"
+                  ? "skipped: no API key"
                   : isFailed
-                    ? "Failed to fetch jobs"
-                    : `${count} jobs discovered`);
+                    ? `Failed: ${item.httpStatus ? `HTTP ${item.httpStatus} ` : ""}${item.error || "Request failed"}`
+                    : rawFetched !== undefined
+                      ? `Fetched ${rawFetched}, kept ${count} jobs`
+                      : `${count} jobs discovered`);
 
               let chipStyle = "border-border bg-muted/40 text-muted-foreground";
-              if (isSkipped) {
+              if (isMissingKey) {
+                // Grey chip for missing API key (never red failed)
+                chipStyle = "border-border/60 bg-muted/70 text-muted-foreground";
+              } else if (isSkipped) {
                 chipStyle = "border-amber-500/30 bg-amber-500/10 text-amber-800 dark:text-amber-300";
               } else if (isFailed) {
                 chipStyle = "border-destructive/30 bg-destructive/10 text-destructive";
-              } else if (count > 0 || completedSources.has(item.source) || status === "completed") {
+              } else if (count > 0 || completedSources.has(item.source) || status === "completed" || status === "completed_empty") {
                 chipStyle = "border-emerald-500/30 bg-emerald-500/10 text-emerald-800 dark:text-emerald-300";
               } else if (isSearching) {
                 chipStyle = "border-primary/30 bg-primary/5 text-primary animate-pulse";
               }
+
+              const countDisplay = isMissingKey
+                ? "skipped: no API key"
+                : isFailed
+                  ? item.httpStatus ? `HTTP ${item.httpStatus}` : "failed"
+                  : rawFetched !== undefined
+                    ? `${rawFetched} → ${count}`
+                    : count > 0
+                      ? `${count} kept`
+                      : isSearching
+                        ? "scanning..."
+                        : "0";
 
               return (
                 <div
@@ -262,15 +303,7 @@ export function SearchProgressBanner({
                 >
                   <span className="capitalize">{item.source}</span>
                   <span className="text-[10px] font-semibold opacity-90">
-                    {isSkipped
-                      ? "skipped"
-                      : isFailed
-                        ? "failed"
-                        : count > 0
-                          ? `${count} found`
-                          : isSearching
-                            ? "scanning..."
-                            : "0"}
+                    {countDisplay}
                   </span>
                   {(isSkipped || isFailed) && (
                     <HelpCircle className="h-3 w-3 opacity-70" />

@@ -5,6 +5,7 @@ import type {
   DeepHealthStatus,
   HealthStatus,
   JobEntity,
+  JobPreferences,
   LoginPayload,
   LogoutResponse,
   MatchesResponse,
@@ -12,7 +13,10 @@ import type {
   ParsedProfile,
   RegisterPayload,
   ResumeEntity,
+  SearchPreset,
   SearchRunEntity,
+  SourceAvailabilityInfo,
+  UserPreferencesDocument,
 } from "@jobpilot/shared";
 import { apiClient } from "@/lib/api";
 import { useAuthStore } from "@/stores/authStore";
@@ -38,6 +42,8 @@ export const queryKeys = {
   applications: ["applications"] as const,
   application: (id: string) => ["applications", id] as const,
   analyticsSummary: ["analytics", "summary"] as const,
+  preferences: ["preferences"] as const,
+  sourceStatuses: ["preferences", "sources"] as const,
 };
 
 // ============================================================================
@@ -62,7 +68,8 @@ export function useDeepHealthQuery() {
       const res = await apiClient.get<DeepHealthStatus>("/health/deep");
       return res.data;
     },
-    staleTime: 30_000,
+    staleTime: 10_000,
+    refetchInterval: 10_000,
   });
 }
 
@@ -147,11 +154,14 @@ export function useResumesQuery() {
   });
 }
 
-export function useResumeQuery(id: string, options?: { refetchInterval?: number | false | ((query: unknown) => number | false) }) {
+export function useResumeQuery(
+  id?: string | null,
+  options?: { refetchInterval?: number | false | ((query: unknown) => number | false) },
+) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
 
   return useQuery({
-    queryKey: queryKeys.resume(id),
+    queryKey: queryKeys.resume(id || ""),
     queryFn: async (): Promise<ResumeEntity> => {
       const res = await apiClient.get<{ resume: ResumeEntity; downloadUrl?: string }>(`/resumes/${id}`);
       return res.data.resume;
@@ -296,6 +306,7 @@ export interface CreateSearchPayload {
   remoteOnly?: boolean;
   seniority?: string;
   sources?: string[];
+  preferences?: JobPreferences;
 }
 
 export function useCreateSearchMutation() {
@@ -310,6 +321,7 @@ export function useCreateSearchMutation() {
         remoteOnly: payload.remoteOnly ?? false,
         seniority: payload.seniority,
         sources: payload.sources,
+        preferences: payload.preferences,
       };
       const res = await apiClient.post<{ data?: SearchRunEntity; _id?: string }>("/searches", body);
       return (res.data.data || res.data) as SearchRunEntity;
@@ -723,3 +735,86 @@ export function useAnalyticsSummaryQuery() {
     staleTime: 30_000,
   });
 }
+
+// ============================================================================
+// Job Preferences Hooks
+// ============================================================================
+export function usePreferencesQuery() {
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+
+  return useQuery({
+    queryKey: queryKeys.preferences,
+    queryFn: async (): Promise<UserPreferencesDocument> => {
+      const res = await apiClient.get<{ data: UserPreferencesDocument }>("/preferences");
+      return res.data.data;
+    },
+    enabled: isAuthenticated,
+    staleTime: 60_000,
+  });
+}
+
+export function useUpdatePreferencesMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload: { preferences: JobPreferences; activePresetId?: string | null }) => {
+      const res = await apiClient.put<{ data: UserPreferencesDocument }>("/preferences", payload);
+      return res.data.data;
+    },
+    onSuccess: (data) => {
+      queryClient.setQueryData(queryKeys.preferences, data);
+      void queryClient.invalidateQueries({ queryKey: queryKeys.preferences });
+    },
+  });
+}
+
+export function useSavePresetMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload: { name: string; preferences: JobPreferences }) => {
+      const res = await apiClient.post<{
+        data: SearchPreset;
+        presets: SearchPreset[];
+        activePresetId?: string | null;
+      }>("/preferences/presets", payload);
+      return res.data;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.preferences });
+    },
+  });
+}
+
+export function useDeletePresetMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (presetId: string) => {
+      const res = await apiClient.delete<{
+        success: boolean;
+        presets: SearchPreset[];
+        activePresetId?: string | null;
+      }>(`/preferences/presets/${presetId}`);
+      return res.data;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.preferences });
+    },
+  });
+}
+
+export function useSourceStatusesQuery() {
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+
+  return useQuery({
+    queryKey: queryKeys.sourceStatuses,
+    queryFn: async (): Promise<SourceAvailabilityInfo[]> => {
+      const res = await apiClient.get<{ data: SourceAvailabilityInfo[] }>("/preferences/sources");
+      return res.data.data;
+    },
+    enabled: isAuthenticated,
+    staleTime: 60_000,
+  });
+}
+

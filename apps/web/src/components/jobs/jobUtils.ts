@@ -5,15 +5,17 @@ export interface JobFilterValues {
   seniority: string;
   savedOnly: boolean;
   sort: "score_desc" | "score_asc" | "date_desc" | "date_asc";
+  showLowMatches?: boolean;
 }
 
 export const DEFAULT_FILTERS: JobFilterValues = {
-  minScore: 0,
+  minScore: 30,
   remoteOnly: false,
   source: "all",
   seniority: "all",
   savedOnly: false,
   sort: "score_desc",
+  showLowMatches: false,
 };
 
 export function formatSalaryDisplay(salary: unknown): string | null {
@@ -33,16 +35,36 @@ export function formatSalaryDisplay(salary: unknown): string | null {
     if (s.text) return s.text;
 
     const curr = s.currency ? `${s.currency} ` : "$";
-    const period = s.period ? `/${s.period === "yearly" ? "yr" : s.period}` : "";
+    const rawPeriod = (s.period || "").toLowerCase();
+    const periodStr =
+      rawPeriod === "yearly" || rawPeriod === "year" || rawPeriod === "annual"
+        ? "/yr"
+        : rawPeriod === "monthly" || rawPeriod === "month"
+          ? "/mo"
+          : rawPeriod === "hourly" || rawPeriod === "hour"
+            ? "/hr"
+            : rawPeriod
+              ? `/${rawPeriod}`
+              : "";
 
     if (typeof s.min === "number" && typeof s.max === "number") {
-      return `${curr}${s.min.toLocaleString()} - ${s.max.toLocaleString()}${period}`;
+      if (s.min === s.max) {
+        // If min == max < 5000 without period, hide it (bogus/placeholder rate)
+        if (s.min < 5000 && !periodStr) {
+          return null;
+        }
+        // Never render "USD 1,000 - 1,000"
+        return `${curr}${s.min.toLocaleString()}${periodStr}`;
+      }
+      return `${curr}${s.min.toLocaleString()} - ${s.max.toLocaleString()}${periodStr}`;
     }
     if (typeof s.min === "number") {
-      return `From ${curr}${s.min.toLocaleString()}${period}`;
+      if (s.min < 5000 && !periodStr) return null;
+      return `From ${curr}${s.min.toLocaleString()}${periodStr}`;
     }
     if (typeof s.max === "number") {
-      return `Up to ${curr}${s.max.toLocaleString()}${period}`;
+      if (s.max < 5000 && !periodStr) return null;
+      return `Up to ${curr}${s.max.toLocaleString()}${periodStr}`;
     }
   }
   return null;

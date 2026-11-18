@@ -24,6 +24,11 @@ CMD ["npm", "run", "dev", "-w", "@jobpilot/web", "--", "--host", "0.0.0.0"]
 
 # Build stage for production static assets
 FROM node:20-alpine AS build
+ARG GIT_SHA=dev
+ARG BUILD_TIME=unknown
+ENV VITE_GIT_SHA=$GIT_SHA \
+    VITE_BUILD_TIME=$BUILD_TIME \
+    VITE_PIPELINE_VERSION=2026-11-17-v3
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY package.json package-lock.json ./

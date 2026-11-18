@@ -123,7 +123,19 @@ export function JobCard({
                 </Badge>
               )}
 
-              {job.remote ? (
+              {job.locationBadge ? (
+                <Badge
+                  variant="outline"
+                  className={
+                    job.remote
+                      ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30 text-[10px] font-medium"
+                      : "text-[10px] font-medium text-muted-foreground"
+                  }
+                >
+                  {job.remote ? <Globe className="mr-1 h-3 w-3" /> : <Building className="mr-1 h-3 w-3" />}
+                  {job.locationBadge}
+                </Badge>
+              ) : job.remote ? (
                 <Badge
                   variant="outline"
                   className="bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30 text-[10px] font-medium"
@@ -162,15 +174,22 @@ export function JobCard({
                   </>
                 )}
               </p>
+              {job.duplicateLocations && job.duplicateLocations.length > 0 && (
+                <p className="text-[11px] text-muted-foreground/80 italic mt-0.5">
+                  Also posted for: {job.duplicateLocations.join(", ")}
+                </p>
+              )}
             </div>
 
-            {/* Salary if present */}
-            {formattedSalary && (
-              <div className="flex items-center gap-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-                <DollarSign className="h-3.5 w-3.5 shrink-0" />
-                <span>{formattedSalary}</span>
-              </div>
-            )}
+            {/* Salary if present, or muted "Salary not listed" */}
+            <div className="flex items-center gap-1 text-xs">
+              <DollarSign className={`h-3.5 w-3.5 shrink-0 ${formattedSalary ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground/40"}`} />
+              {formattedSalary ? (
+                <span className="font-semibold text-emerald-600 dark:text-emerald-400">{formattedSalary}</span>
+              ) : (
+                <span className="text-muted-foreground/60 italic">Salary not listed</span>
+              )}
+            </div>
 
             {/* Top matched & missing skills chips */}
             <div className="pt-2 flex flex-wrap items-center gap-1.5">
@@ -189,17 +208,25 @@ export function JobCard({
                   key={skill}
                   className="inline-flex items-center gap-1 rounded-md bg-muted/60 px-2 py-0.5 text-[11px] font-medium text-muted-foreground border border-border/80"
                 >
-                  <AlertCircle className="h-3 w-3 shrink-0 text-amber-500/80" />
-                  {skill}
+                  <AlertCircle className="h-3 w-3 shrink-0 text-muted-foreground" />
+                  <span>{skill}</span>
+                  <span className="text-[9px] text-muted-foreground/75 font-normal">(missing)</span>
                 </span>
               ))}
 
               {topMatchedSkills.length === 0 && topMissingSkills.length === 0 && (
                 <span className="text-[11px] text-muted-foreground italic">
-                  General technical profile match
+                  No skill overlap found
                 </span>
               )}
             </div>
+
+            {/* Explanation & Adjustment Notes */}
+            {match.explanation && (
+              <p className="text-xs text-muted-foreground line-clamp-2 pt-1 font-normal leading-relaxed">
+                {match.explanation}
+              </p>
+            )}
           </div>
 
           {/* Right side: Score ring & Save action */}
@@ -219,7 +246,7 @@ export function JobCard({
                 <Bookmark className={`h-4 w-4 ${saved ? "fill-primary" : ""}`} />
               </Button>
 
-              <MatchScoreBadge score={match.score} size="sm" showLabel />
+              <MatchScoreBadge score={match.score} tier={match.tier} size="sm" showLabel />
             </div>
 
             <div className="hidden sm:flex items-center gap-1 text-[11px] font-medium text-muted-foreground group-hover:text-primary transition-colors">

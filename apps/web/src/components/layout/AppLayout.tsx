@@ -1,6 +1,7 @@
 import { Outlet } from "react-router-dom";
 import { ErrorBoundary } from "@/components/feedback/ErrorBoundary";
 import { Toaster } from "@/components/feedback/Toaster";
+import { AppFooter } from "@/components/layout/AppFooter";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { MobileNav } from "@/components/layout/MobileNav";
@@ -20,6 +21,8 @@ export function AppLayout() {
             <Outlet />
           </ErrorBoundary>
         </main>
+
+        <AppFooter />
       </div>
 
       {/* Mobile bottom nav */}

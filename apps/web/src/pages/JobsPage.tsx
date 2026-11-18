@@ -1,5 +1,6 @@
 import {
   AlertCircle,
+  AlertTriangle,
   Briefcase,
   ChevronDown,
   ChevronLeft,
@@ -11,6 +12,7 @@ import {
   RefreshCw,
   RotateCcw,
   Search,
+  SlidersHorizontal,
   Sparkles,
 } from "lucide-react";
 import React, { useMemo, useState } from "react";
@@ -117,6 +119,63 @@ export function JobsPage() {
   const totalPages = matchesQuery.data?.pagination?.totalPages || 1;
   const totalCount = matchesQuery.data?.pagination?.total || 0;
 
+  // Extract dynamic sources from actual results and searchRun telemetry
+  const presentSources = useMemo(() => {
+    const rawMatches = matchesQuery.data?.data || [];
+    const set = new Set<string>();
+    for (const m of rawMatches) {
+      const job: JobEntity | undefined =
+        typeof m.jobId === "object" && m.jobId !== null
+          ? (m.jobId as JobEntity)
+          : m.job;
+      if (job?.source) {
+        set.add(job.source.toLowerCase());
+      }
+    }
+    const statuses = searchQuery.data?.sourceStatuses || [];
+    for (const s of statuses) {
+      if (s.count && s.count > 0) {
+        set.add(s.source.toLowerCase());
+      }
+    }
+    return ["all", ...Array.from(set)];
+  }, [matchesQuery.data?.data, searchQuery.data?.sourceStatuses]);
+
+  // Honest header summary text with exclusion breakdown
+  const honestHeaderSubtitle = useMemo(() => {
+    const diag = searchQuery.data?.diagnostics;
+    if (!diag || !diag.fetched) {
+      return "Personalized job postings ranked by semantic similarity and verified skills.";
+    }
+    const scanned = diag.fetched.toLocaleString();
+    const rawMatches = matchesQuery.data?.data || [];
+    const strongGood = rawMatches.filter((m) => m.tier === "strong" || m.tier === "good" || m.score >= 50).length;
+    const matchCountStr = strongGood > 0 ? `${strongGood} strong/good matches` : `${totalCount} matches`;
+
+    const exclusions: string[] = [];
+    if (diag.filterBreakdown?.role_family) {
+      exclusions.push(`role family ${diag.filterBreakdown.role_family.toLocaleString()}`);
+    }
+    if (diag.filterBreakdown?.language) {
+      exclusions.push(`language ${diag.filterBreakdown.language.toLocaleString()}`);
+    }
+    if (diag.filterBreakdown?.onsite_abroad) {
+      exclusions.push(`on-site abroad ${diag.filterBreakdown.onsite_abroad.toLocaleString()}`);
+    }
+    if (diag.filterBreakdown?.remote_region_restricted) {
+      exclusions.push(`region-restricted ${diag.filterBreakdown.remote_region_restricted.toLocaleString()}`);
+    }
+    if (diag.filterBreakdown?.senior) {
+      exclusions.push(`senior ${diag.filterBreakdown.senior.toLocaleString()}`);
+    }
+    if (diag.filterBreakdown?.excluded_keywords) {
+      exclusions.push(`keywords ${diag.filterBreakdown.excluded_keywords.toLocaleString()}`);
+    }
+
+    const exStr = exclusions.length > 0 ? ` Excluded: ${exclusions.join(", ")}.` : "";
+    return `${matchCountStr} from ${scanned} scanned jobs.${exStr}`;
+  }, [searchQuery.data?.diagnostics, matchesQuery.data?.data, totalCount]);
+
   // Handle Save / Unsave bookmark toggle with optimistic updates
   const handleToggleSave = async (jobId: string, currentlySaved: boolean) => {
     if (currentlySaved) {
@@ -147,11 +206,30 @@ export function JobsPage() {
             <Sparkles className="h-5 w-5 text-primary" />
           </h1>
           <p className="text-xs text-muted-foreground mt-1">
-            Personalized job postings ranked by semantic similarity and verified skills.
+            {honestHeaderSubtitle}{" "}
+            {searchQuery.data?.diagnostics && (
+              <button
+                type="button"
+                onClick={() => setShowDiagnostics(true)}
+                className="underline text-primary hover:text-primary/80 font-medium inline-block ml-1"
+              >
+                View diagnostics
+              </button>
+            )}
           </p>
         </div>
 
         <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => navigate("/preferences")}
+            className="text-xs gap-1.5"
+          >
+            <SlidersHorizontal className="h-3.5 w-3.5" />
+            <span>Preferences</span>
+          </Button>
+
           <Button
             variant="outline"
             size="sm"
@@ -184,9 +262,38 @@ export function JobsPage() {
         />
       )}
 
+      {/* Legacy Matches Notice Banner */}
+      {matchesQuery.data?.hasLegacyMatches && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3.5 text-xs text-amber-700 dark:text-amber-300 font-medium animate-fade-in shadow-sm">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4 shrink-0 text-amber-500" />
+            <span>
+              Results from an older version were hidden ({matchesQuery.data.legacyCount} legacy jobs). Run a new search to see updated matches and scoring.
+            </span>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7 text-xs border-amber-500/40 text-amber-700 dark:text-amber-300 hover:bg-amber-500/15 shrink-0 self-start sm:self-auto"
+            onClick={() => navigate("/onboarding")}
+          >
+            Run New Search
+          </Button>
+        </div>
+      )}
+
+      {/* Fallback Broad Results Banner */}
+      {searchQuery.data?.diagnostics?.fallbackUsed && (
+        <div className="flex items-center gap-2.5 rounded-xl border border-primary/20 bg-primary/5 p-3.5 text-xs text-primary font-medium animate-fade-in shadow-sm">
+          <Sparkles className="h-4 w-4 shrink-0 text-primary" />
+          <span>Showing broader results because few exact matches were found.</span>
+        </div>
+      )}
+
       {/* Discovery Filters Toolbar */}
       <JobFilters
         filters={filters}
+        availableSources={presentSources}
         onChange={(next) => {
           setFilters(next);
           setPage(1); // reset to page 1 on filter modification
@@ -194,6 +301,99 @@ export function JobsPage() {
         totalCount={totalCount}
         filteredCount={filteredMatches.length}
       />
+
+      {/* "Why so few results?" Collapsible Diagnostics Panel */}
+      {searchQuery.data?.diagnostics && (
+        <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+          <button
+            type="button"
+            onClick={() => setShowDiagnostics(!showDiagnostics)}
+            className="w-full flex items-center justify-between text-left text-xs font-semibold text-foreground hover:text-primary transition-colors"
+            aria-expanded={showDiagnostics}
+          >
+            <div className="flex items-center gap-2">
+              <Info className="h-4 w-4 text-primary" />
+              <span>Why so few results? Search Diagnostics & Stage Breakdown</span>
+            </div>
+            {showDiagnostics ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          </button>
+
+          {showDiagnostics && (
+            <div className="pt-2 border-t border-border/50 text-xs space-y-4 animate-fade-in">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <div className="rounded-lg bg-muted/50 p-2.5 text-center">
+                  <div className="text-[10px] text-muted-foreground uppercase font-semibold">Stage 1: Fetched</div>
+                  <div className="text-lg font-bold text-foreground mt-0.5">
+                    {searchQuery.data.diagnostics.fetched ?? 0}
+                  </div>
+                </div>
+                <div className="rounded-lg bg-muted/50 p-2.5 text-center">
+                  <div className="text-[10px] text-muted-foreground uppercase font-semibold">Stage 2: After Dedupe</div>
+                  <div className="text-lg font-bold text-foreground mt-0.5">
+                    {searchQuery.data.diagnostics.afterDedupe ?? 0}
+                  </div>
+                </div>
+                <div className="rounded-lg bg-muted/50 p-2.5 text-center">
+                  <div className="text-[10px] text-muted-foreground uppercase font-semibold">Stage 3: Passing Criteria</div>
+                  <div className="text-lg font-bold text-foreground mt-0.5">
+                    {searchQuery.data.diagnostics.afterHardFilters ?? 0}
+                  </div>
+                </div>
+                <div className="rounded-lg bg-muted/50 p-2.5 text-center">
+                  <div className="text-[10px] text-muted-foreground uppercase font-semibold">Stage 4: Ranked Matches</div>
+                  <div className="text-lg font-bold text-foreground mt-0.5">
+                    {searchQuery.data.diagnostics.ranked ?? 0}
+                  </div>
+                </div>
+              </div>
+
+              {searchQuery.data.diagnostics.mainFilterRemoved && (
+                <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 p-2.5 text-amber-800 dark:text-amber-300 text-xs">
+                  <span className="font-semibold">Main filter constraint: </span>
+                  {searchQuery.data.diagnostics.mainFilterRemoved}
+                </div>
+              )}
+
+              {/* Per-Filter Breakdown */}
+              {searchQuery.data.diagnostics.filterBreakdown && (
+                <div>
+                  <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
+                    Per-Filter Jobs Removed
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5 text-xs">
+                    {Object.entries(searchQuery.data.diagnostics.filterBreakdown).map(([fKey, count]) => (
+                      <div key={fKey} className="rounded border bg-muted/30 px-2 py-1 flex items-center justify-between">
+                        <span className="capitalize text-muted-foreground">{fKey.replace("_", " ")}</span>
+                        <span className="font-semibold">{count}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Per-Source Breakdown */}
+              {searchQuery.data.sourceStatuses && searchQuery.data.sourceStatuses.length > 0 && (
+                <div>
+                  <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
+                    Per-Source Details
+                  </div>
+                  <div className="space-y-1">
+                    {searchQuery.data.sourceStatuses.map((st) => (
+                      <div key={st.source} className="flex flex-wrap items-center justify-between text-[11px] rounded bg-muted/20 px-2 py-1">
+                        <span className="capitalize font-medium">{st.source}</span>
+                        <span className="text-muted-foreground">
+                          {st.rawFetched !== undefined ? `Fetched ${st.rawFetched} → kept ${st.count}` : `${st.count} kept`}
+                          {st.httpStatus ? ` (HTTP ${st.httpStatus})` : ""}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Results Content Area */}
       {matchesQuery.isLoading ? (
@@ -302,62 +502,6 @@ export function JobsPage() {
                   <span>Start New Search</span>
                 </Button>
               </div>
-            </div>
-          )}
-
-          {/* "Why 0 results" collapsible diagnostics panel */}
-          {searchQuery.data?.diagnostics && (
-            <div className="rounded-xl border border-border bg-card p-4 space-y-3">
-              <button
-                type="button"
-                onClick={() => setShowDiagnostics(!showDiagnostics)}
-                className="w-full flex items-center justify-between text-left text-xs font-semibold text-foreground hover:text-primary transition-colors"
-                aria-expanded={showDiagnostics}
-              >
-                <div className="flex items-center gap-2">
-                  <Info className="h-4 w-4 text-primary" />
-                  <span>Why 0 results? Search Diagnostics & Stage Breakdown</span>
-                </div>
-                {showDiagnostics ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-              </button>
-
-              {showDiagnostics && (
-                <div className="pt-2 border-t border-border/50 text-xs space-y-3 animate-fade-in">
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                    <div className="rounded-lg bg-muted/50 p-2.5 text-center">
-                      <div className="text-[10px] text-muted-foreground uppercase font-semibold">Stage 1: Fetched</div>
-                      <div className="text-lg font-bold text-foreground mt-0.5">
-                        {searchQuery.data.diagnostics.fetched ?? 0}
-                      </div>
-                    </div>
-                    <div className="rounded-lg bg-muted/50 p-2.5 text-center">
-                      <div className="text-[10px] text-muted-foreground uppercase font-semibold">Stage 2: After Dedupe</div>
-                      <div className="text-lg font-bold text-foreground mt-0.5">
-                        {searchQuery.data.diagnostics.afterDedupe ?? 0}
-                      </div>
-                    </div>
-                    <div className="rounded-lg bg-muted/50 p-2.5 text-center">
-                      <div className="text-[10px] text-muted-foreground uppercase font-semibold">Stage 3: Passing Criteria</div>
-                      <div className="text-lg font-bold text-foreground mt-0.5">
-                        {searchQuery.data.diagnostics.afterHardFilters ?? 0}
-                      </div>
-                    </div>
-                    <div className="rounded-lg bg-muted/50 p-2.5 text-center">
-                      <div className="text-[10px] text-muted-foreground uppercase font-semibold">Stage 4: Ranked Matches</div>
-                      <div className="text-lg font-bold text-foreground mt-0.5">
-                        {searchQuery.data.diagnostics.ranked ?? 0}
-                      </div>
-                    </div>
-                  </div>
-
-                  {searchQuery.data.diagnostics.mainFilterRemoved && (
-                    <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 p-2.5 text-amber-800 dark:text-amber-300 text-xs">
-                      <span className="font-semibold">Main filter constraint: </span>
-                      {searchQuery.data.diagnostics.mainFilterRemoved}
-                    </div>
-                  )}
-                </div>
-              )}
             </div>
           )}
         </div>

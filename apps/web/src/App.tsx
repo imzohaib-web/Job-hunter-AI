@@ -7,6 +7,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { AnalyticsPage } from "@/pages/AnalyticsPage";
 import { ApplicationsPage } from "@/pages/ApplicationsPage";
 import { DashboardPage } from "@/pages/DashboardPage";
+import { JobPreferencesPage } from "@/pages/JobPreferencesPage";
 import { JobsPage } from "@/pages/JobsPage";
 import { LoginPage } from "@/pages/LoginPage";
 import { NotFoundPage } from "@/pages/NotFoundPage";
@@ -38,6 +39,7 @@ export default function App() {
             <Route index element={<DashboardPage />} />
             <Route path="onboarding" element={<OnboardingPage />} />
             <Route path="jobs" element={<JobsPage />} />
+            <Route path="preferences" element={<JobPreferencesPage />} />
             <Route path="prepare/:matchId" element={<PrepareApplicationPage />} />
             <Route path="applications" element={<ApplicationsPage />} />
             <Route path="profile" element={<ProfilePage />} />
