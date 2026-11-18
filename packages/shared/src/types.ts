@@ -7,7 +7,7 @@ export interface HealthStatus {
   timestamp: string;
 }
 
-export type DependencyCheckStatus = "ok" | "error";
+export type DependencyCheckStatus = "ok" | "starting" | "error";
 
 export interface DeepHealthChecks {
   api: DependencyCheckStatus;
@@ -114,14 +114,77 @@ export interface ResumeDetail extends ResumeListItem {
 }
 
 // Job preferences
+export type EmploymentType = "full-time" | "part-time" | "contract" | "internship" | "freelance";
+export type ExperienceLevel = "internship" | "entry" | "mid" | "senior" | "lead";
+export type WorkMode = "remote" | "hybrid" | "on-site";
+export type DatePostedFilter = "24h" | "3d" | "7d" | "30d" | "all";
+export type CompanySize = "startup" | "mid" | "large";
+export type SalaryPeriod = "monthly" | "yearly";
+
+export interface PreferenceLocation {
+  country?: string;
+  city?: string;
+  label?: string;
+}
+
+export interface PreferenceSalary {
+  currency: string;
+  minimum?: number;
+  period: SalaryPeriod;
+  hideWithoutSalary: boolean;
+}
+
 export interface JobPreferences {
-  roles: string[];
-  locations: string[];
-  remoteOnly: boolean;
-  seniority: string;
+  targetTitles: string[];
+  employmentTypes: EmploymentType[];
+  experienceLevels: ExperienceLevel[];
+  workModes: WorkMode[];
+  locations: PreferenceLocation[];
+  openToRelocation: boolean;
+  remoteWorldwide: boolean;
+  visaSponsorshipNeeded: boolean;
+  preferredCountries: string[];
+  salary: PreferenceSalary;
+  mustHaveSkills: string[];
+  niceToHaveSkills: string[];
+  industries: string[];
+  companySizes: CompanySize[];
+  datePosted: DatePostedFilter;
+  excludedKeywords: string[];
+  excludedCompanies: string[];
+  roleFamilies: string[];
+  alsoShowOtherRoles: boolean;
+  sources: string[];
+  // Backwards compatibility
+  roles?: string[];
+  remoteOnly?: boolean;
+  seniority?: string;
   salaryMin?: number;
   salaryMax?: number;
-  excludedKeywords?: string[];
+}
+
+export interface SearchPreset {
+  id: string;
+  name: string;
+  preferences: JobPreferences;
+  createdAt: string;
+}
+
+export interface UserPreferencesDocument {
+  userId: string;
+  preferences: JobPreferences;
+  presets: SearchPreset[];
+  activePresetId?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface SourceAvailabilityInfo {
+  source: string;
+  name: string;
+  available: boolean;
+  reason?: string;
+  supportedFilters: string[];
 }
 
 // Job discovery & Match entities
@@ -141,6 +204,8 @@ export interface JobEntity {
   title: string;
   company: string;
   location: string;
+  locationBadge?: string;
+  duplicateLocations?: string[];
   remote: boolean;
   salary?: JobSalary | string | null;
   description: string;
@@ -170,11 +235,13 @@ export interface MatchEntity {
   job?: JobEntity;
   searchId?: string;
   score: number;
+  tier?: "strong" | "good" | "possible" | "stretch";
   breakdown: ScoreBreakdown;
   matchedSkills: string[];
   missingSkills: string[];
   explanation: string;
   hardFilterFailed?: boolean;
+  pipelineVersion?: string;
   isSaved?: boolean;
   createdAt: string;
   updatedAt: string;
@@ -190,24 +257,42 @@ export interface MatchesPagination {
 export interface MatchesResponse {
   data: MatchEntity[];
   pagination: MatchesPagination;
+  hasLegacyMatches?: boolean;
+  legacyCount?: number;
 }
 
 export interface SourceStatusItem {
   source: string;
   status: "ok" | "skipped" | "failed" | "error";
   count: number;
+  rawFetched?: number;
+  afterDedupe?: number;
+  afterLocalFilters?: number;
+  querySent?: string;
+  httpStatus?: number | null;
   reason?: string | null;
   error?: string | null;
   durationMs?: number;
+  localFiltersApplied?: string[];
+  filterBreakdown?: Record<string, number>;
 }
 
 export interface SearchDiagnostics {
   fetched: number;
   afterDedupe: number;
   afterHardFilters: number;
+  preselected?: number;
+  candidateCap?: number | null;
+  truncatedBy?: string | null;
+  languageRemoved?: number;
+  onsiteAbroadRemoved?: number;
   ranked: number;
   mainFilterRemoved?: string | null;
   sourceStatuses?: SourceStatusItem[];
+  fallbackUsed?: boolean;
+  fallbackStage?: string;
+  filterBreakdown?: Record<string, number>;
+  timings?: Record<string, number>;
 }
 
 export interface SearchRunEntity {
@@ -219,7 +304,7 @@ export interface SearchRunEntity {
   sourceStatuses?: SourceStatusItem[];
   diagnostics?: SearchDiagnostics | null;
   resultsCount: number;
-  status: "pending" | "running" | "completed" | "failed";
+  status: "pending" | "running" | "processing" | "completed" | "completed_empty" | "failed";
   error?: string | null;
   errorStack?: string | null;
   durationMs: number;
@@ -278,4 +363,13 @@ export interface AnalyticsSummary {
     description: string;
     timestamp: string;
   }>;
+}
+
+export const PIPELINE_VERSION = "2026-11-17-v3";
+
+export interface VersionInfo {
+  service: string;
+  git_sha: string;
+  build_time: string;
+  pipeline_version: string;
 }

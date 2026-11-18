@@ -8,9 +8,13 @@ export type {
   ApplicationStatus,
   AuthResponse,
   AuthUser,
+  CompanySize,
+  DatePostedFilter,
   DeepHealthChecks,
   DeepHealthStatus,
   DependencyCheckStatus,
+  EmploymentType,
+  ExperienceLevel,
   GroupedApplications,
   HealthStatus,
   JobEntity,
@@ -22,18 +26,28 @@ export type {
   MatchesResponse,
   MatchEntity,
   OriginalFileRef,
+  PreferenceLocation,
+  PreferenceSalary,
   RegisterPayload,
   ResumeDetail,
   ResumeEntity,
   ResumeListItem,
   ResumeStatus,
+  SalaryPeriod,
   ScoreBreakdown,
   SearchDiagnostics,
+  SearchPreset,
   SearchProgressEvent,
   SearchRunEntity,
+  SourceAvailabilityInfo,
   SourceStatusItem,
+  UserPreferencesDocument,
   UserQuotaCounters,
+  VersionInfo,
+  WorkMode,
 } from "./types.js";
+
+export { PIPELINE_VERSION } from "./types.js";
 
 export type { components, paths };
 
