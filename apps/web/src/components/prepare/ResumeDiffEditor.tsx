@@ -512,6 +512,62 @@ export function ResumeDiffEditor({
                 </div>
               )}
 
+              {/* Projects */}
+              {Array.isArray((originalProfile as any)?.projects) && (originalProfile as any).projects.length > 0 && (
+                <div className="space-y-3">
+                  <span className="text-[11px] uppercase font-bold text-foreground">
+                    Key Projects
+                  </span>
+                  {(originalProfile as any).projects.map((proj: any, pIdx: number) => (
+                    <div key={pIdx} className="space-y-1.5 border-l-2 border-border pl-3">
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold text-foreground">{proj.name}</span>
+                        {proj.year && <span className="text-[11px] text-muted-foreground">{proj.year}</span>}
+                      </div>
+                      {proj.context_line && (
+                        <p className="text-[11px] italic text-muted-foreground">{proj.context_line}</p>
+                      )}
+                      {Array.isArray(proj.bullets) && proj.bullets.length > 0 ? (
+                        <ul className="list-disc list-outside pl-4 space-y-1 leading-relaxed">
+                          {proj.bullets.map((b: string, bIdx: number) => (
+                            <li key={bIdx}>{b}</li>
+                          ))}
+                        </ul>
+                      ) : proj.description ? (
+                        <p className="text-[11px] text-muted-foreground">{proj.description}</p>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Education */}
+              {Array.isArray((originalProfile as any)?.education) && (originalProfile as any).education.length > 0 && (
+                <div className="space-y-2">
+                  <span className="text-[11px] uppercase font-bold text-foreground">
+                    Education
+                  </span>
+                  {(originalProfile as any).education.map((edu: any, eIdx: number) => {
+                    const deg = edu.field_of_study && !edu.degree.toLowerCase().includes(edu.field_of_study.toLowerCase())
+                      ? `${edu.degree} in ${edu.field_of_study}`
+                      : edu.degree;
+                    return (
+                      <div key={eIdx} className="space-y-0.5 border-l-2 border-border pl-3">
+                        <div className="flex items-center justify-between">
+                          <span className="font-semibold text-foreground">{deg}</span>
+                          <span className="text-[11px] text-muted-foreground">{edu.end || edu.year}</span>
+                        </div>
+                        <p className="text-[11px] text-muted-foreground">{edu.institution}</p>
+                        {edu.gpa && <p className="text-[11px] text-muted-foreground">CGPA: {edu.gpa}</p>}
+                        {Array.isArray(edu.coursework) && edu.coursework.length > 0 && (
+                          <p className="text-[10px] text-muted-foreground italic">Coursework: {edu.coursework.join(", ")}</p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
               {/* Skills */}
               {Array.isArray(originalProfile?.skills) && originalProfile.skills.length > 0 && (
                 <div className="space-y-1.5">
@@ -619,6 +675,76 @@ export function ResumeDiffEditor({
                     ))}
                   </div>
                 )}
+
+              {/* Key Projects */}
+              {Array.isArray((resolvedTailoredProfile as any)?.projects) && (resolvedTailoredProfile as any).projects.length > 0 && (
+                <div className="space-y-3">
+                  <span className="text-[11px] uppercase font-bold text-primary">
+                    Key Projects
+                  </span>
+                  {(resolvedTailoredProfile as any).projects.map((proj: any, pIdx: number) => (
+                    <div key={pIdx} className="space-y-1.5 border-l-2 border-primary/40 pl-3">
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold text-foreground">{proj.name}</span>
+                        {proj.year && <span className="text-[11px] text-muted-foreground">{proj.year}</span>}
+                      </div>
+                      {proj.context_line && (
+                        <p className="text-[11px] italic text-muted-foreground">{proj.context_line}</p>
+                      )}
+                      {Array.isArray(proj.bullets) && proj.bullets.length > 0 ? (
+                        <ul className="list-disc list-outside pl-4 space-y-1 leading-relaxed">
+                          {proj.bullets.map((b: string, bIdx: number) => {
+                            const isAccepted = changes.some(
+                              (c, idx) => c.section === "projects" && c.after === b && decisions[idx] === "accepted",
+                            );
+                            return (
+                              <li
+                                key={bIdx}
+                                className={
+                                  isAccepted
+                                    ? "text-emerald-700 dark:text-emerald-300 font-medium bg-emerald-500/10 px-1 py-0.5 rounded"
+                                    : ""
+                                }
+                              >
+                                {b}
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      ) : proj.description ? (
+                        <p className="text-[11px] text-muted-foreground">{proj.description}</p>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Education */}
+              {Array.isArray((resolvedTailoredProfile as any)?.education) && (resolvedTailoredProfile as any).education.length > 0 && (
+                <div className="space-y-2">
+                  <span className="text-[11px] uppercase font-bold text-primary">
+                    Education
+                  </span>
+                  {(resolvedTailoredProfile as any).education.map((edu: any, eIdx: number) => {
+                    const deg = edu.field_of_study && !edu.degree.toLowerCase().includes(edu.field_of_study.toLowerCase())
+                      ? `${edu.degree} in ${edu.field_of_study}`
+                      : edu.degree;
+                    return (
+                      <div key={eIdx} className="space-y-0.5 border-l-2 border-primary/40 pl-3">
+                        <div className="flex items-center justify-between">
+                          <span className="font-semibold text-foreground">{deg}</span>
+                          <span className="text-[11px] text-muted-foreground">{edu.end || edu.year}</span>
+                        </div>
+                        <p className="text-[11px] text-muted-foreground">{edu.institution}</p>
+                        {edu.gpa && <p className="text-[11px] text-muted-foreground">CGPA: {edu.gpa}</p>}
+                        {Array.isArray(edu.coursework) && edu.coursework.length > 0 && (
+                          <p className="text-[10px] text-muted-foreground italic">Coursework: {edu.coursework.join(", ")}</p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
 
               {/* Skills */}
               {Array.isArray(resolvedTailoredProfile?.skills) &&

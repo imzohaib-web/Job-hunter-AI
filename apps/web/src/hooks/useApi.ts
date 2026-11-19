@@ -209,6 +209,21 @@ export function usePatchResumeMutation() {
   });
 }
 
+export function useReparseResumeMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string): Promise<ResumeEntity> => {
+      const res = await apiClient.post<{ resume: ResumeEntity }>(`/resumes/${id}/reparse`);
+      return res.data.resume;
+    },
+    onSuccess: (data) => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.resumes });
+      queryClient.setQueryData(queryKeys.resume(data._id), data);
+    },
+  });
+}
+
 export function useDeleteResumeMutation() {
   const queryClient = useQueryClient();
 
@@ -487,6 +502,15 @@ export function useResumeRunMutation() {
   return useMutation({
     mutationFn: async (runId: string): Promise<unknown> => {
       const res = await apiClient.post<{ data: unknown }>(`/runs/${runId}/resume`);
+      return res.data.data;
+    },
+  });
+}
+
+export function useRetryNodeMutation() {
+  return useMutation({
+    mutationFn: async ({ runId, node }: { runId: string; node: string }): Promise<unknown> => {
+      const res = await apiClient.post<{ data: unknown }>(`/runs/${runId}/retry-node`, { node });
       return res.data.data;
     },
   });

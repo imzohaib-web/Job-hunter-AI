@@ -2,6 +2,7 @@ import {
   AlertCircle,
   CheckCircle2,
   Clock,
+  HelpCircle,
   Loader2,
   RefreshCw,
   Sparkles,
@@ -11,10 +12,10 @@ import {
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useResumeRunMutation } from "@/hooks/useApi";
+import { useResumeRunMutation, useRetryNodeMutation, useRunSnapshotQuery } from "@/hooks/useApi";
 import { useSSE } from "@/hooks/useSSE";
 
-export type StepStatus = "pending" | "running" | "completed" | "failed";
+export type StepStatus = "pending" | "running" | "completed" | "skipped" | "failed";
 
 export interface StepperNodeState {
   id: "company_research" | "tailor_resume" | "fabrication_check";
@@ -35,6 +36,7 @@ export interface GraphProgressEventData {
   started_at?: string;
   ended_at?: string;
   message?: string;
+  error?: string;
 }
 
 interface PreparationRunStepperProps {
@@ -73,12 +75,72 @@ export function PreparationRunStepper({
 }: PreparationRunStepperProps) {
   const [nodes, setNodes] = useState<StepperNodeState[]>(INITIAL_NODES);
   const [now, setNow] = useState<number>(Date.now());
+  const [overallStartedAt, setOverallStartedAt] = useState<number | null>(null);
+  const [overallEndedAt, setOverallEndedAt] = useState<number | null>(null);
   const [hasCompleted, setHasCompleted] = useState(false);
   const onCompleteCalledRef = useRef(false);
 
+  const retryMutation = useRetryNodeMutation();
   const resumeMutation = useResumeRunMutation();
+  const { data: snapshotData } = useRunSnapshotQuery(runId);
 
-  // Tick timer every 100ms for smooth duration counters
+  // Restore snapshot data if available
+  useEffect(() => {
+    if (!snapshotData) return;
+    const nodeStatus = snapshotData.nodeStatus as
+      | Record<
+          string,
+          {
+            status?: string;
+            startedAt?: string;
+            endedAt?: string;
+            duration?: number;
+            message?: string;
+            error?: string;
+          }
+        >
+      | undefined;
+
+    if (nodeStatus) {
+      setNodes((prev) =>
+        prev.map((n) => {
+          const stored = nodeStatus[n.id];
+          if (!stored) return n;
+
+          let mappedStatus: StepStatus = n.status;
+          if (stored.status === "done" || stored.status === "completed") {
+            mappedStatus = "completed";
+          } else if (stored.status === "skipped") {
+            mappedStatus = "skipped";
+          } else if (stored.status === "running") {
+            mappedStatus = "running";
+          } else if (stored.status === "failed") {
+            mappedStatus = "failed";
+          }
+
+          const started = stored.startedAt ? new Date(stored.startedAt).getTime() : n.startedAt;
+          const ended = stored.endedAt ? new Date(stored.endedAt).getTime() : n.endedAt;
+
+          return {
+            ...n,
+            status: mappedStatus,
+            message: stored.message || n.message,
+            error: stored.error || n.error,
+            durationMs: stored.duration ? stored.duration * 1000 : n.durationMs,
+            startedAt: started,
+            endedAt: ended,
+          };
+        }),
+      );
+    }
+
+    if (snapshotData.status === "completed") {
+      setHasCompleted(true);
+      if (!overallEndedAt) setOverallEndedAt(Date.now());
+    }
+  }, [snapshotData, overallEndedAt]);
+
+  // Tick timer every 100ms for duration counters
   useEffect(() => {
     const timer = setInterval(() => {
       setNow(Date.now());
@@ -97,6 +159,11 @@ export function PreparationRunStepper({
       const nodeName: string | undefined = data.node;
       const status: string | undefined = data.status;
       const message: string = data.message || "";
+      const errorMsg: string | undefined = data.error || (status === "failed" ? message : undefined);
+
+      if (!overallStartedAt) {
+        setOverallStartedAt(Date.now());
+      }
 
       setNodes((prev) => {
         const next = prev.map((n) => ({ ...n }));
@@ -112,7 +179,10 @@ export function PreparationRunStepper({
             if (newStatus === "running" && target.status !== "running") {
               target.startedAt = Date.now();
             }
-            if ((newStatus === "completed" || newStatus === "failed") && !target.endedAt) {
+            if (
+              (newStatus === "completed" || newStatus === "skipped" || newStatus === "failed") &&
+              !target.endedAt
+            ) {
               target.endedAt = Date.now();
               if (target.startedAt) {
                 target.durationMs = target.endedAt - target.startedAt;
@@ -127,48 +197,45 @@ export function PreparationRunStepper({
         if (nodeName === "company_research") {
           if (status === "running") {
             updateNode("company_research", "running", message);
-          } else if (status === "done" || status === "skipped") {
+          } else if (status === "done" || status === "completed") {
             updateNode("company_research", "completed", message);
+          } else if (status === "skipped") {
+            updateNode("company_research", "skipped", message);
           } else if (status === "failed") {
-            updateNode("company_research", "failed", message, message);
+            updateNode("company_research", "failed", message, errorMsg);
           }
         } else if (nodeName === "tailor_resume") {
           if (status === "running") {
-            // Ensure company research is marked done if not already
             const cr = next.find((n) => n.id === "company_research");
-            if (cr && cr.status !== "completed") {
+            if (cr && cr.status === "pending") {
               updateNode("company_research", "completed");
             }
             updateNode("tailor_resume", "running", message);
-          } else if (status === "done") {
+          } else if (status === "done" || status === "completed") {
             updateNode("tailor_resume", "completed", message);
-            // Resume tailoring passed fabrication check
-            updateNode("fabrication_check", "running", "Auditing resume modifications...");
+          } else if (status === "skipped") {
+            updateNode("tailor_resume", "skipped", message);
           } else if (status === "failed") {
-            updateNode("tailor_resume", "failed", message, message);
+            updateNode("tailor_resume", "failed", message, errorMsg);
           }
         } else if (nodeName === "fabrication_check") {
           if (status === "running") {
             updateNode("fabrication_check", "running", message);
-          } else if (status === "done") {
+          } else if (status === "done" || status === "completed") {
             updateNode("fabrication_check", "completed", message);
+          } else if (status === "skipped") {
+            updateNode("fabrication_check", "skipped", message);
           } else if (status === "failed") {
-            updateNode("fabrication_check", "failed", message, message);
+            updateNode("fabrication_check", "failed", message, errorMsg);
           }
         } else if (nodeName === "system" || nodeName === "assemble_result") {
           if (status === "done" || status === "completed") {
-            // All completed
-            next.forEach((n) => {
-              if (n.status !== "completed") {
-                updateNode(n.id, "completed");
-              }
-            });
             setHasCompleted(true);
+            setOverallEndedAt(Date.now());
           } else if (status === "failed") {
-            // Mark last active node as failed
             const runningNode = next.find((n) => n.status === "running");
             if (runningNode) {
-              updateNode(runningNode.id, "failed", message, message);
+              updateNode(runningNode.id, "failed", message, errorMsg);
             }
           }
         }
@@ -177,37 +244,48 @@ export function PreparationRunStepper({
       });
     },
     onError: () => {
-      // Don't mark failed immediately on transient error as useSSE retries automatically
+      // Reconnect handled automatically
     },
   });
 
-  // Check if all 3 nodes have completed
+  // Check if all 3 nodes have finished (completed or skipped)
   const allCompleted =
     hasCompleted ||
-    (nodes.length === 3 && nodes.every((n) => n.status === "completed"));
+    (nodes.length === 3 &&
+      nodes.every((n) => n.status === "completed" || n.status === "skipped"));
 
   useEffect(() => {
-    if (allCompleted && !onCompleteCalledRef.current) {
-      onCompleteCalledRef.current = true;
-      // Small graceful delay to let user see completion checkmarks
-      const timer = setTimeout(() => {
-        onComplete?.();
-      }, 700);
-      return () => clearTimeout(timer);
+    if (allCompleted) {
+      if (!overallEndedAt) {
+        setOverallEndedAt(Date.now());
+      }
+      if (!onCompleteCalledRef.current) {
+        onCompleteCalledRef.current = true;
+        const timer = setTimeout(() => {
+          onComplete?.();
+        }, 700);
+        return () => clearTimeout(timer);
+      }
     }
-  }, [allCompleted, onComplete]);
+  }, [allCompleted, overallEndedAt, onComplete]);
 
-  // Handle retry
-  const handleRetry = async () => {
+  // Handle retry of a single node
+  const handleRetryNode = async (nodeId: StepperNodeState["id"]) => {
     try {
-      await resumeMutation.mutateAsync(runId);
+      try {
+        await resumeMutation.mutateAsync(runId);
+      } catch {
+        // Fallback
+      }
+      await retryMutation.mutateAsync({ runId, node: nodeId });
       setNodes((prev) =>
         prev.map((n) => {
-          if (n.status === "failed") {
+          if (n.id === nodeId) {
             return {
               ...n,
               status: "running",
               error: undefined,
+              message: "Retrying step...",
               startedAt: Date.now(),
               endedAt: undefined,
               durationMs: undefined,
@@ -217,13 +295,13 @@ export function PreparationRunStepper({
         }),
       );
     } catch {
-      // Resume mutation handled
+      // Mutation errors handled
     }
   };
 
   const hasFailedNode = nodes.some((n) => n.status === "failed");
 
-  // Format node duration
+  // Format single node duration
   const formatDuration = (node: StepperNodeState) => {
     if (node.status === "pending") return null;
     if (node.status === "running" && node.startedAt) {
@@ -239,6 +317,18 @@ export function PreparationRunStepper({
     return null;
   };
 
+  // Format total elapsed timer
+  const totalElapsedFormatted = () => {
+    const firstStarted =
+      overallStartedAt ||
+      nodes.find((n) => n.startedAt)?.startedAt ||
+      (nodes.some((n) => n.status === "running") ? now : null);
+    if (!firstStarted) return null;
+    const end = overallEndedAt || (allCompleted ? now : now);
+    const ms = Math.max(0, end - firstStarted);
+    return `${(ms / 1000).toFixed(1)}s`;
+  };
+
   return (
     <Card className={`border shadow-md bg-card ${className}`}>
       <CardHeader className="border-b pb-4 px-6">
@@ -248,11 +338,19 @@ export function PreparationRunStepper({
               <Sparkles className="h-5 w-5" />
             </div>
             <div>
-              <CardTitle className="text-base font-semibold text-foreground">
-                Application Preparation Pipeline
-              </CardTitle>
+              <div className="flex items-center gap-2">
+                <CardTitle className="text-base font-semibold text-foreground">
+                  Application Preparation Pipeline
+                </CardTitle>
+                {totalElapsedFormatted() && (
+                  <span className="font-mono text-xs bg-muted/60 text-muted-foreground px-2 py-0.5 rounded flex items-center gap-1">
+                    <Clock className="h-3 w-3" />
+                    <span>Total: {totalElapsedFormatted()}</span>
+                  </span>
+                )}
+              </div>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Multi-agent orchestration: company research, defensive tailoring, and fabrication audit
+                Defensive multi-agent orchestration. Typically takes 30-60 seconds.
               </p>
             </div>
           </div>
@@ -303,15 +401,20 @@ export function PreparationRunStepper({
                   className={`relative z-10 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2 transition-all ${
                     node.status === "completed"
                       ? "border-emerald-500 bg-emerald-500 text-white shadow-sm shadow-emerald-500/20"
-                      : node.status === "running"
-                        ? "border-primary bg-background text-primary shadow-md shadow-primary/20 ring-4 ring-primary/10"
-                        : node.status === "failed"
-                          ? "border-destructive bg-destructive text-destructive-foreground shadow-sm shadow-destructive/20"
-                          : "border-muted-foreground/30 bg-muted/60 text-muted-foreground"
+                      : node.status === "skipped"
+                        ? "border-muted-foreground/40 bg-muted text-muted-foreground"
+                        : node.status === "running"
+                          ? "border-primary bg-background text-primary shadow-md shadow-primary/20 ring-4 ring-primary/10"
+                          : node.status === "failed"
+                            ? "border-destructive bg-destructive text-destructive-foreground shadow-sm shadow-destructive/20"
+                            : "border-muted-foreground/30 bg-muted/60 text-muted-foreground"
                   }`}
                 >
                   {node.status === "completed" && (
                     <CheckCircle2 className="h-5 w-5 stroke-[2.5]" />
+                  )}
+                  {node.status === "skipped" && (
+                    <HelpCircle className="h-4 w-4 stroke-[2.2]" />
                   )}
                   {node.status === "running" && (
                     <Loader2 className="h-4 w-4 animate-spin text-primary stroke-[2.5]" />
@@ -336,20 +439,24 @@ export function PreparationRunStepper({
                         className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium uppercase tracking-wider ${
                           node.status === "completed"
                             ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                            : node.status === "running"
-                              ? "bg-primary/10 text-primary animate-pulse"
-                              : node.status === "failed"
-                                ? "bg-destructive/10 text-destructive"
-                                : "bg-muted text-muted-foreground"
+                            : node.status === "skipped"
+                              ? "bg-muted text-muted-foreground border border-muted-foreground/20"
+                              : node.status === "running"
+                                ? "bg-primary/10 text-primary animate-pulse"
+                                : node.status === "failed"
+                                  ? "bg-destructive/10 text-destructive"
+                                  : "bg-muted text-muted-foreground"
                         }`}
                       >
                         {node.status === "completed"
                           ? "Completed"
-                          : node.status === "running"
-                            ? "Running"
-                            : node.status === "failed"
-                              ? "Failed"
-                              : "Pending"}
+                          : node.status === "skipped"
+                            ? "Skipped"
+                            : node.status === "running"
+                              ? "Running"
+                              : node.status === "failed"
+                                ? "Failed"
+                                : "Pending"}
                       </span>
                     </div>
 
@@ -366,13 +473,20 @@ export function PreparationRunStepper({
                     {node.description}
                   </p>
 
-                  {/* Progress message or error */}
+                  {/* Progress message */}
                   {node.message && node.status !== "failed" && (
-                    <p className="text-xs text-primary/80 mt-2 italic bg-primary/5 p-2 rounded border border-primary/10">
+                    <p
+                      className={`text-xs mt-2 italic p-2 rounded border ${
+                        node.status === "skipped"
+                          ? "text-muted-foreground bg-muted/40 border-muted"
+                          : "text-primary/80 bg-primary/5 border-primary/10"
+                      }`}
+                    >
                       {node.message}
                     </p>
                   )}
 
+                  {/* Error & node-specific retry */}
                   {node.error && (
                     <div className="mt-3 p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-xs text-destructive flex items-start justify-between gap-3">
                       <div className="flex items-start gap-2 min-w-0">
@@ -383,11 +497,11 @@ export function PreparationRunStepper({
                         type="button"
                         variant="destructive"
                         size="sm"
-                        onClick={handleRetry}
-                        disabled={resumeMutation.isPending}
+                        onClick={() => handleRetryNode(node.id)}
+                        disabled={retryMutation.isPending}
                         className="shrink-0 gap-1 text-xs h-7 px-2.5 font-semibold"
                       >
-                        {resumeMutation.isPending ? (
+                        {retryMutation.isPending ? (
                           <Loader2 className="h-3 w-3 animate-spin" />
                         ) : (
                           <RefreshCw className="h-3 w-3" />
@@ -408,29 +522,34 @@ export function PreparationRunStepper({
             <div className="flex items-center gap-2 text-xs text-destructive">
               <AlertCircle className="h-4 w-4 shrink-0" />
               <span className="font-medium">
-                Pipeline execution stopped due to a node failure. You can resume execution from the checkpoint.
+                Pipeline execution stopped due to a node failure. You can retry the failed node to continue.
               </span>
             </div>
-            <Button
-              type="button"
-              variant="default"
-              size="sm"
-              onClick={handleRetry}
-              disabled={resumeMutation.isPending}
-              className="gap-1.5 text-xs font-semibold"
-            >
-              {resumeMutation.isPending ? (
-                <>
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  <span>Resuming Graph...</span>
-                </>
-              ) : (
-                <>
-                  <RefreshCw className="h-3.5 w-3.5" />
-                  <span>Retry Node</span>
-                </>
-              )}
-            </Button>
+            {nodes.find((n) => n.status === "failed") && (
+              <Button
+                type="button"
+                variant="default"
+                size="sm"
+                onClick={() => {
+                  const failed = nodes.find((n) => n.status === "failed");
+                  if (failed) void handleRetryNode(failed.id);
+                }}
+                disabled={retryMutation.isPending}
+                className="gap-1.5 text-xs font-semibold"
+              >
+                {retryMutation.isPending ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    <span>Retrying...</span>
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="h-3.5 w-3.5" />
+                    <span>Retry Failed Node</span>
+                  </>
+                )}
+              </Button>
+            )}
           </div>
         )}
 
@@ -439,7 +558,9 @@ export function PreparationRunStepper({
           <div className="mt-6 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-between gap-3">
             <div className="flex items-center gap-2 text-xs text-emerald-700 dark:text-emerald-300 font-medium">
               <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-              <span>All 3 pipeline stages finished successfully. Generating review interface...</span>
+              <span>
+                All pipeline stages finished. Review your tailored resume below.
+              </span>
             </div>
             {onComplete && (
               <Button

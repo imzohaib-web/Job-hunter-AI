@@ -3,13 +3,16 @@ import {
   Briefcase,
   Download,
   Edit3,
+  ExternalLink,
   FileText,
   FileUp,
   GraduationCap,
   History,
+  Loader2,
   PlusCircle,
   RefreshCw,
   Sparkles,
+  Trophy,
   Wrench,
 } from "lucide-react";
 import { useState } from "react";
@@ -19,12 +22,52 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useResumesQuery } from "@/hooks/useApi";
+import { useReparseResumeMutation, useResumesQuery } from "@/hooks/useApi";
+import { toast } from "@/stores/toastStore";
 import type { ResumeEntity } from "@jobpilot/shared";
+
+function formatDegree(degree?: string, field?: string): string {
+  if (!degree) return field ?? "";
+  if (!field) return degree;
+  if (degree.toLowerCase().includes(field.toLowerCase())) return degree;
+  return `${degree} in ${field}`;
+}
+
+function getLinkDisplay(link: any): { label: string; url: string } {
+  if (typeof link === "string") {
+    let label = "Link";
+    const lower = link.toLowerCase();
+    if (lower.includes("github.com")) label = "GitHub";
+    else if (lower.includes("linkedin.com")) label = "LinkedIn";
+    else if (lower.includes("vercel.app") || lower.includes("portfolio") || lower.includes("netlify")) label = "Portfolio";
+    return { label, url: link };
+  }
+  return { label: link.label || "Link", url: link.url };
+}
 
 export function ProfilePage() {
   const { data: resumes, isLoading, isError, error, refetch } = useResumesQuery();
   const [isEditing, setIsEditing] = useState(false);
+  const reparseMutation = useReparseResumeMutation();
+
+  const handleReparse = async () => {
+    if (!latestResume) return;
+    try {
+      await reparseMutation.mutateAsync(latestResume._id);
+      toast({
+        title: "Resume Re-parsed",
+        description: "Your profile has been upgraded with lossless skill groups, project bullets, and education details.",
+        variant: "default",
+      });
+      void refetch();
+    } catch (err: unknown) {
+      toast({
+        title: "Re-parse Failed",
+        description: err instanceof Error ? err.message : "Failed to re-parse resume",
+        variant: "destructive",
+      });
+    }
+  };
 
   if (isLoading) {
     return (
@@ -126,14 +169,51 @@ export function ProfilePage() {
             </h1>
             <Badge variant="success">Verified Profile</Badge>
           </div>
+          {profile?.headline && (
+            <p className="text-sm font-semibold text-primary/90">{profile.headline}</p>
+          )}
           <p className="text-xs text-muted-foreground">
             {profile?.location && <span>{profile.location} • </span>}
             {profile?.email && <span>{profile.email} • </span>}
             {profile?.phone && <span>{profile.phone}</span>}
           </p>
+          {(profile?.links ?? []).length > 0 && (
+            <div className="flex flex-wrap gap-2 pt-1">
+              {profile?.links?.map((link, idx) => {
+                const info = getLinkDisplay(link);
+                return (
+                  <a
+                    key={idx}
+                    href={info.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 rounded bg-secondary/60 hover:bg-secondary px-2 py-0.5 text-xs text-primary underline-offset-2 hover:underline transition-colors"
+                  >
+                    <span>{info.label}</span>
+                    <ExternalLink className="h-3 w-3 opacity-70" />
+                  </a>
+                );
+              })}
+            </div>
+          )}
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2.5 flex-wrap">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleReparse}
+            disabled={reparseMutation.isPending}
+            className="gap-1.5"
+            title="Re-parse resume to extract full lossless structure"
+          >
+            {reparseMutation.isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin text-primary" />
+            ) : (
+              <RefreshCw className="h-4 w-4 text-primary" />
+            )}
+            Re-parse Resume
+          </Button>
           <Button variant="outline" size="sm" onClick={() => setIsEditing(true)} className="gap-1.5">
             <Edit3 className="h-4 w-4" />
             Edit Profile
@@ -160,7 +240,35 @@ export function ProfilePage() {
       )}
 
       {/* Skills */}
-      {(profile?.skills ?? []).length > 0 && (
+      {profile?.skill_groups && profile.skill_groups.length > 0 ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-primary" />
+              Skills by Category
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {profile.skill_groups.map((group, gIdx) => (
+              <div key={gIdx} className="space-y-1.5">
+                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  {group.label}
+                </span>
+                <div className="flex flex-wrap gap-2">
+                  {group.items.map((item, iIdx) => (
+                    <span
+                      key={iIdx}
+                      className="inline-flex items-center gap-1.5 rounded-lg border bg-secondary/50 px-2.5 py-1 text-xs font-medium text-foreground"
+                    >
+                      {item}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      ) : (profile?.skills ?? []).length > 0 ? (
         <Card>
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
@@ -189,7 +297,7 @@ export function ProfilePage() {
             </div>
           </CardContent>
         </Card>
-      )}
+      ) : null}
 
       {/* Work Experience */}
       {(profile?.experience ?? []).length > 0 && (
@@ -206,10 +314,13 @@ export function ProfilePage() {
                 <div className="flex items-center justify-between">
                   <h3 className="text-sm font-semibold text-foreground">{exp.title}</h3>
                   <span className="text-xs text-muted-foreground">
-                    {exp.start || "Start"} — {exp.end || "Present"}
+                    {exp.start || "Start"} — {exp.end || (exp.is_current ? "Present" : "End")}
                   </span>
                 </div>
-                <p className="text-xs font-medium text-primary">{exp.company}</p>
+                <div className="flex items-center gap-2 text-xs font-medium text-primary">
+                  <span>{exp.company}</span>
+                  {exp.location && <span className="text-muted-foreground font-normal">• {exp.location}</span>}
+                </div>
                 {(exp.bullets ?? []).length > 0 && (
                   <ul className="text-xs text-muted-foreground space-y-1 list-disc pl-4 mt-2">
                     {exp.bullets?.map((bullet, bIdx) => (
@@ -233,12 +344,39 @@ export function ProfilePage() {
                 Education
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent className="space-y-4">
               {profile?.education?.map((edu, idx) => (
-                <div key={idx} className="border-b pb-2 last:border-b-0">
-                  <p className="text-xs font-semibold text-foreground">{edu.degree}</p>
+                <div key={idx} className="border-b pb-3 last:border-b-0 last:pb-0 space-y-1">
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="text-xs font-semibold text-foreground">
+                      {formatDegree(edu.degree, edu.field_of_study)}
+                    </p>
+                    {(edu.start || edu.end) && (
+                      <span className="text-[11px] text-muted-foreground shrink-0">
+                        {edu.start ? `${edu.start} — ` : ""}{edu.end || "Present"}{edu.expected ? " (Expected)" : ""}
+                      </span>
+                    )}
+                  </div>
                   <p className="text-xs text-muted-foreground">{edu.institution}</p>
-                  {edu.end && <p className="text-[11px] text-muted-foreground/80">{edu.end}</p>}
+                  {edu.gpa && (
+                    <p className="text-xs font-medium text-primary/90">
+                      CGPA: {edu.gpa}{edu.gpa_scale ? ` / ${edu.gpa_scale}` : ""}
+                    </p>
+                  )}
+                  {edu.coursework && edu.coursework.length > 0 && (
+                    <div className="pt-1">
+                      <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider block mb-1">
+                        Relevant Coursework
+                      </span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {edu.coursework.map((cw, cIdx) => (
+                          <span key={cIdx} className="text-[11px] bg-secondary/70 px-2 py-0.5 rounded text-foreground">
+                            {cw}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
             </CardContent>
@@ -253,19 +391,47 @@ export function ProfilePage() {
                 Projects
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent className="space-y-4">
               {profile?.projects?.map((proj, idx) => (
-                <div key={idx} className="border-b pb-2 last:border-b-0">
-                  <p className="text-xs font-semibold text-foreground">{proj.name}</p>
-                  <p className="text-xs text-muted-foreground">{proj.description}</p>
+                <div key={idx} className="border-b pb-3 last:border-b-0 last:pb-0 space-y-1.5">
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="text-xs font-semibold text-foreground">{proj.name}</p>
+                    {proj.year && (
+                      <span className="text-[11px] text-muted-foreground shrink-0">{proj.year}</span>
+                    )}
+                  </div>
+                  {proj.context_line && (
+                    <p className="text-xs font-medium italic text-muted-foreground">
+                      {proj.context_line}
+                    </p>
+                  )}
+                  {proj.bullets && proj.bullets.length > 0 ? (
+                    <ul className="text-xs text-muted-foreground space-y-1 list-disc pl-4">
+                      {proj.bullets.map((bullet, bIdx) => (
+                        <li key={bIdx}>{bullet}</li>
+                      ))}
+                    </ul>
+                  ) : proj.description ? (
+                    <p className="text-xs text-muted-foreground">{proj.description}</p>
+                  ) : null}
+                  {proj.tech_stack && proj.tech_stack.length > 0 && (
+                    <div className="flex flex-wrap gap-1 pt-1">
+                      {proj.tech_stack.map((t, tIdx) => (
+                        <span key={tIdx} className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded">
+                          {t}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                   {proj.url && (
                     <a
                       href={proj.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-[11px] text-primary hover:underline"
+                      className="text-[11px] text-primary hover:underline inline-flex items-center gap-1 pt-0.5"
                     >
-                      {proj.url}
+                      <span>{proj.url}</span>
+                      <ExternalLink className="h-3 w-3" />
                     </a>
                   )}
                 </div>
@@ -274,6 +440,29 @@ export function ProfilePage() {
           </Card>
         )}
       </div>
+
+      {/* Scholarships / Awards */}
+      {(profile?.scholarships ?? []).length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Trophy className="h-4 w-4 text-primary" />
+              Scholarships & Awards
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {profile?.scholarships?.map((award, idx) => (
+              <div key={idx} className="flex items-center justify-between border-b pb-2 last:border-b-0 text-xs">
+                <div>
+                  <p className="font-semibold text-foreground">{award.title}</p>
+                  {award.issuer && <p className="text-muted-foreground">{award.issuer}</p>}
+                </div>
+                {award.year && <span className="text-muted-foreground">{award.year}</span>}
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Version History */}
       <Card>

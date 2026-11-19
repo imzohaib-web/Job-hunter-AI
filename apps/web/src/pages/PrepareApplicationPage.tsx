@@ -48,6 +48,7 @@ export function PrepareApplicationPage() {
       setPrepareError(null);
       const res = await prepareMutation.mutateAsync(matchId);
       setActiveRunId(res.runId);
+      navigate({ search: `?runId=${res.runId}` }, { replace: true });
       toast.info("Preparation pipeline initiated. Streaming agent steps...", "Preparation Started");
     } catch (err: unknown) {
       const msg =

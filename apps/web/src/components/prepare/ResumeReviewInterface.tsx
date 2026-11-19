@@ -55,6 +55,12 @@ export function ResumeReviewInterface({
 
   // Company insight content
   const companyInsight: CompanyInsight | undefined = companyArtifact?.content as unknown as CompanyInsight | undefined;
+  const hasCompanyTab = Boolean(
+    companyArtifact &&
+    companyInsight &&
+    !(companyInsight as Record<string, unknown>)._skipped &&
+    ((Array.isArray(companyInsight.sources) && companyInsight.sources.length > 0) || companyInsight.company_website)
+  );
 
   // Track review decisions per change index
   const [decisions, setDecisions] = useState<Record<number, ReviewDecision>>(() => {
@@ -161,6 +167,29 @@ export function ResumeReviewInterface({
     }
   };
 
+  const handleDownloadJson = () => {
+    if (!isExportEnabled) {
+      toast.info(
+        `Please review all changes before exporting (${pendingCount} pending).`,
+        "Review Incomplete",
+      );
+      return;
+    }
+    const dataStr =
+      "data:text/json;charset=utf-8," +
+      encodeURIComponent(JSON.stringify(sections, null, 2));
+    const downloadAnchor = document.createElement("a");
+    downloadAnchor.setAttribute("href", dataStr);
+    downloadAnchor.setAttribute(
+      "download",
+      `tailored-resume-${companyName.toLowerCase().replace(/[^a-z0-9]/g, "-")}.json`,
+    );
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
+    toast.success("Tailored resume JSON downloaded successfully!", "Export Complete");
+  };
+
   // Job details
   const job = match?.job || (typeof match?.jobId === "object" ? (match?.jobId as JobEntity) : null);
   const jobTitle = job?.title || "Target Role";
@@ -245,7 +274,7 @@ export function ResumeReviewInterface({
                 ) : (
                   <>
                     <FileDown className="h-3.5 w-3.5" />
-                    <span>Download DOCX</span>
+                    <span>Export DOCX</span>
                   </>
                 )}
               </Button>
@@ -254,10 +283,23 @@ export function ResumeReviewInterface({
                 type="button"
                 variant="outline"
                 size="sm"
+                data-testid="download-json-btn"
+                onClick={handleDownloadJson}
+                disabled={!isExportEnabled || isExportingDocx || isExportingPdf}
+                className="gap-1.5 text-xs font-semibold"
+              >
+                <Download className="h-3.5 w-3.5" />
+                <span>Download JSON</span>
+              </Button>
+
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
                 data-testid="export-pdf-btn"
                 onClick={() => handleExport("pdf")}
                 disabled={!isExportEnabled || isExportingDocx || isExportingPdf}
-                className="gap-1.5 text-xs font-semibold"
+                className="gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground"
               >
                 {isExportingPdf ? (
                   <>
@@ -267,7 +309,7 @@ export function ResumeReviewInterface({
                 ) : (
                   <>
                     <Download className="h-3.5 w-3.5" />
-                    <span>Download PDF</span>
+                    <span>PDF</span>
                   </>
                 )}
               </Button>
@@ -275,7 +317,7 @@ export function ResumeReviewInterface({
           </div>
         </div>
 
-        {/* Tab Navigation Header (Strictly ONLY Resume and Company) */}
+        {/* Tab Navigation Header (Strictly ONLY Resume and Company, Company only if available) */}
         <div className="mt-6 pt-4 border-t flex items-center gap-3" data-testid="review-tabs">
           <button
             type="button"
@@ -301,36 +343,38 @@ export function ResumeReviewInterface({
             </Badge>
           </button>
 
-          <button
-            type="button"
-            data-testid="tab-company"
-            onClick={() => setActiveTab("company")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all ${
-              activeTab === "company"
-                ? "bg-primary text-primary-foreground shadow-sm"
-                : "text-muted-foreground hover:bg-muted hover:text-foreground"
-            }`}
-          >
-            <Building className="h-4 w-4" />
-            <span>Company</span>
-            {companyInsight?.confidence && (
-              <Badge
-                variant="outline"
-                className={`text-[10px] ml-1 ${
-                  activeTab === "company"
-                    ? "border-primary-foreground/30 text-primary-foreground"
-                    : ""
-                }`}
-              >
-                {Math.round(companyInsight.confidence * 100)}%
-              </Badge>
-            )}
-          </button>
+          {hasCompanyTab && (
+            <button
+              type="button"
+              data-testid="tab-company"
+              onClick={() => setActiveTab("company")}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all ${
+                activeTab === "company"
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+              }`}
+            >
+              <Building className="h-4 w-4" />
+              <span>Company</span>
+              {companyInsight?.confidence && (
+                <Badge
+                  variant="outline"
+                  className={`text-[10px] ml-1 ${
+                    activeTab === "company"
+                      ? "border-primary-foreground/30 text-primary-foreground"
+                      : ""
+                  }`}
+                >
+                  {Math.round(companyInsight.confidence * 100)}%
+                </Badge>
+              )}
+            </button>
+          )}
         </div>
       </Card>
 
       {/* Tab Panels */}
-      {activeTab === "resume" && (
+      {(activeTab === "resume" || !hasCompanyTab) && (
         <div className="space-y-6">
           {/* Prominent Fabrication & ATS Report */}
           <FabricationAtsReport

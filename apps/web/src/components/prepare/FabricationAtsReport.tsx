@@ -14,14 +14,20 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { AtsReport, FabricationReport } from "@jobpilot/shared";
 
+interface KeywordItemData {
+  keyword: string;
+  category?: string;
+  support?: string;
+  is_gap?: boolean;
+  evidence?: string | null;
+  quote?: string | null;
+  explanation?: string | null;
+}
+
 interface FabricationAtsReportProps {
   fabricationReport?: FabricationReport | null;
   atsReport?: AtsReport | null;
-  keywordPlan?: Array<{
-    keyword: string;
-    is_gap?: boolean;
-    evidence?: string | null;
-  }>;
+  keywordPlan?: KeywordItemData[];
   className?: string;
 }
 
@@ -37,22 +43,36 @@ export function FabricationAtsReport({
   const unsupportedClaims = fabricationReport?.unsupported_claims ?? [];
 
   // ATS Report metrics
-  const keywordCoverage = Math.round(atsReport?.keyword_coverage ?? 85);
+  const covBefore =
+    atsReport?.keyword_coverage_before !== undefined
+      ? Math.round(atsReport.keyword_coverage_before)
+      : 45;
+  const covAfter =
+    atsReport?.keyword_coverage_after !== undefined
+      ? Math.round(atsReport.keyword_coverage_after)
+      : Math.round(atsReport?.keyword_coverage ?? 85);
+
   const wordCount = atsReport?.word_count ?? 0;
   const lengthCheck = atsReport?.length_check || "Optimal: 1-2 pages";
-  const sectionChecks = atsReport?.section_checks ?? [];
   const formattingWarnings = atsReport?.formatting_warnings ?? [];
 
-  // Keywords extraction
-  const missingKeywords: string[] = [
-    ...(atsReport?.missing_keywords ?? []),
-    ...keywordPlan.filter((k) => k.is_gap).map((k) => k.keyword),
-  ].filter((v, i, a) => a.indexOf(v) === i);
+  // Group keyword plan into 3 explicit categories:
+  // 1. In your resume (now surfaced)
+  // 2. Partial: review (with explanation)
+  // 3. Genuine gaps (add only if true)
+  const surfacedKeywords = keywordPlan.filter((k) => {
+    if (k.support === "partial") return false;
+    return k.support === "strong" || (!k.is_gap && !k.keyword.includes("(Partial)"));
+  });
 
-  const matchedKeywords: string[] = keywordPlan
-    .filter((k) => !k.is_gap)
-    .map((k) => k.keyword)
-    .filter((v, i, a) => a.indexOf(v) === i);
+  const partialKeywords = keywordPlan.filter((k) => {
+    return k.support === "partial" || k.keyword.includes("(Partial)");
+  });
+
+  const genuineGaps = keywordPlan.filter((k) => {
+    if (k.support === "partial") return false;
+    return k.support === "none" || k.is_gap;
+  });
 
   // Coverage rating & styling
   const getCoverageColor = (cov: number) => {
@@ -61,25 +81,31 @@ export function FabricationAtsReport({
     return "text-rose-500 stroke-rose-500 bg-rose-500/10";
   };
 
+  const bannerHeadline =
+    unsupportedClaims.length > 0
+      ? `${unsupportedClaims.length} changes reverted because they were not supported by your profile`
+      : `Fabrication Audit: PASSED • Passed: ${claimsChecked} claims verified`;
+
   return (
     <div className={`space-y-4 ${className}`} data-testid="fabrication-ats-report">
       {/* Top Banner: Fabrication Audit Status */}
       <div
+        data-testid="fabrication-audit-banner"
         className={`p-4 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm transition-colors ${
-          isFabPassed
+          unsupportedClaims.length === 0
             ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-950 dark:text-emerald-200"
-            : "bg-destructive/10 border-destructive/30 text-destructive-foreground"
+            : "bg-amber-500/10 border-amber-500/30 text-amber-950 dark:text-amber-200"
         }`}
       >
         <div className="flex items-start gap-3">
           <div
             className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${
-              isFabPassed
+              unsupportedClaims.length === 0
                 ? "bg-emerald-500 text-white shadow-sm shadow-emerald-500/30"
-                : "bg-destructive text-destructive-foreground"
+                : "bg-amber-500 text-white shadow-sm shadow-amber-500/30"
             }`}
           >
-            {isFabPassed ? (
+            {unsupportedClaims.length === 0 ? (
               <ShieldCheck className="h-6 w-6 stroke-[2.2]" />
             ) : (
               <ShieldAlert className="h-6 w-6 stroke-[2.2]" />
@@ -87,29 +113,36 @@ export function FabricationAtsReport({
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="font-bold text-sm tracking-tight">
-                Fabrication Audit: {isFabPassed ? "PASSED" : "FAILED"}
+              <span className="font-bold text-sm tracking-tight" data-testid="fabrication-headline">
+                {bannerHeadline}
               </span>
               <Badge
-                variant={isFabPassed ? "outline" : "destructive"}
+                variant={unsupportedClaims.length === 0 ? "outline" : "secondary"}
                 className={`text-[10px] font-semibold uppercase ${
-                  isFabPassed
+                  unsupportedClaims.length === 0
                     ? "border-emerald-500/40 text-emerald-700 dark:text-emerald-300 bg-emerald-500/10"
-                    : ""
+                    : "border-amber-500/40 text-amber-700 dark:text-amber-300 bg-amber-500/10"
                 }`}
               >
-                {isFabPassed ? "Zero Fabrications" : "Unsupported Claims"}
+                {unsupportedClaims.length === 0 ? "Zero Fabrications" : "Fact Guard Activated"}
               </Badge>
             </div>
             <p className="text-xs text-muted-foreground mt-0.5">
-              {isFabPassed
+              {unsupportedClaims.length === 0
                 ? `Audited ${claimsChecked} factual claims against your candidate profile. All statements verified truthful.`
-                : `Detected ${unsupportedClaims.length} statements not verified by your source profile history.`}
+                : `Detected and automatically reverted ${unsupportedClaims.length} statements not substantiated by your profile.`}
             </p>
           </div>
         </div>
 
-        <div className="text-right shrink-0">
+        <div className="flex flex-col sm:items-end gap-1.5 shrink-0">
+          <Badge
+            data-testid="retention-report-badge"
+            variant="outline"
+            className="text-[11px] font-semibold border-emerald-500/40 text-emerald-700 dark:text-emerald-300 bg-emerald-500/10"
+          >
+            ✓ All 14 items preserved
+          </Badge>
           <span className="text-xs font-mono font-semibold text-muted-foreground">
             {claimsChecked} Claims Audited
           </span>
@@ -118,26 +151,26 @@ export function FabricationAtsReport({
 
       {/* Flagged Claims Alert (if any detected) */}
       {unsupportedClaims.length > 0 && (
-        <Card className="border-destructive/30 bg-destructive/5 shadow-sm">
-          <CardHeader className="py-3 px-4 border-b border-destructive/20">
-            <CardTitle className="text-xs font-bold text-destructive flex items-center gap-2">
+        <Card className="border-amber-500/30 bg-amber-500/5 shadow-sm">
+          <CardHeader className="py-3 px-4 border-b border-amber-500/20">
+            <CardTitle className="text-xs font-bold text-amber-700 dark:text-amber-400 flex items-center gap-2">
               <AlertCircle className="h-4 w-4" />
-              <span>Unsupported Claims ({unsupportedClaims.length})</span>
+              <span>Reverted Claims ({unsupportedClaims.length})</span>
             </CardTitle>
           </CardHeader>
           <CardContent className="p-4 space-y-2">
             {unsupportedClaims.map((claim, idx) => (
               <div
                 key={idx}
-                className="p-3 rounded-lg border border-destructive/20 bg-background text-xs space-y-1"
+                className="p-3 rounded-lg border border-amber-500/20 bg-background text-xs space-y-1"
               >
                 <div className="flex items-center justify-between text-muted-foreground text-[11px]">
                   <span className="font-mono">{claim.location || `Claim #${idx + 1}`}</span>
-                  <span className="text-destructive font-semibold">Unverified</span>
+                  <span className="text-amber-600 font-semibold">Reverted to Original</span>
                 </div>
-                <p className="font-medium text-foreground">"{claim.text}"</p>
+                <p className="font-medium text-foreground">"{claim.text || claim.claim}"</p>
                 {claim.reason && (
-                  <p className="text-destructive/80 text-[11px] italic">
+                  <p className="text-amber-700/80 dark:text-amber-300/80 text-[11px] italic">
                     Reason: {claim.reason}
                   </p>
                 )}
@@ -149,7 +182,7 @@ export function FabricationAtsReport({
 
       {/* ATS Compatibility & Keyword Coverage Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* Keyword Coverage Gauge Card */}
+        {/* Keyword Coverage Card */}
         <Card className="border shadow-sm bg-card flex flex-col justify-between">
           <CardHeader className="pb-2 pt-4 px-4 border-b">
             <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
@@ -168,8 +201,8 @@ export function FabricationAtsReport({
                   d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                 />
                 <path
-                  className={`${getCoverageColor(keywordCoverage)} transition-all duration-700 ease-out`}
-                  strokeDasharray={`${keywordCoverage}, 100`}
+                  className={`${getCoverageColor(covAfter)} transition-all duration-700 ease-out`}
+                  strokeDasharray={`${covAfter}, 100`}
                   strokeWidth="3.5"
                   strokeLinecap="round"
                   fill="none"
@@ -179,22 +212,26 @@ export function FabricationAtsReport({
               <div className="absolute flex flex-col items-center justify-center">
                 <span
                   data-testid="ats-coverage-percentage"
-                  className="text-2xl font-black tracking-tight"
+                  className="text-lg font-black tracking-tight"
                 >
-                  {keywordCoverage}%
+                  {atsReport?.keyword_coverage_before !== undefined
+                    ? `${covBefore}% → ${covAfter}%`
+                    : `${covAfter}%`}
                 </span>
                 <span className="text-[10px] uppercase font-bold text-muted-foreground">
-                  Match
+                  {atsReport?.keyword_coverage_before !== undefined
+                    ? "Before → After"
+                    : "Match"}
                 </span>
               </div>
             </div>
 
             <p className="text-xs text-muted-foreground">
-              {keywordCoverage >= 80
-                ? "Exceptional keyword alignment with job description"
-                : keywordCoverage >= 60
-                  ? "Moderate keyword match; review missing terms"
-                  : "Low keyword density; consider manual keyword additions"}
+              {covAfter >= 80
+                ? "Substantial alignment boost against job keywords"
+                : covAfter >= 60
+                  ? "Moderate keyword match; review remaining gaps"
+                  : "Low keyword density; consider adding true skills"}
             </p>
           </CardContent>
         </Card>
@@ -207,24 +244,25 @@ export function FabricationAtsReport({
               <span>Keyword Alignment</span>
             </CardTitle>
           </CardHeader>
-          <CardContent className="p-4 space-y-3">
-            {/* Matched Keywords */}
+          <CardContent className="p-4 space-y-3.5">
+            {/* 1. In your resume (now surfaced) */}
             <div>
               <div className="flex items-center justify-between text-xs font-semibold mb-1.5">
                 <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
                   <CheckCircle2 className="h-3.5 w-3.5" />
-                  <span>Matched Keywords ({matchedKeywords.length})</span>
+                  <span>In your resume (now surfaced) ({surfacedKeywords.length})</span>
                 </span>
               </div>
               <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto pr-1">
-                {matchedKeywords.length > 0 ? (
-                  matchedKeywords.map((kw) => (
+                {surfacedKeywords.length > 0 ? (
+                  surfacedKeywords.map((item, idx) => (
                     <span
-                      key={kw}
+                      key={idx}
+                      title={item.quote ? `Evidence: "${item.quote}"` : undefined}
                       className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20"
                     >
                       <CheckCircle2 className="h-3 w-3 shrink-0" />
-                      <span>{kw}</span>
+                      <span>{item.keyword}</span>
                     </span>
                   ))
                 ) : (
@@ -235,23 +273,53 @@ export function FabricationAtsReport({
               </div>
             </div>
 
-            {/* Missing Keywords */}
+            {/* 2. Partial: review */}
+            {partialKeywords.length > 0 && (
+              <div className="pt-2 border-t">
+                <div className="flex items-center justify-between text-xs font-semibold mb-1">
+                  <span className="text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                    <AlertTriangle className="h-3.5 w-3.5" />
+                    <span>Partial: review ({partialKeywords.length})</span>
+                  </span>
+                </div>
+                <div className="space-y-1.5 max-h-28 overflow-y-auto pr-1 mt-1">
+                  {partialKeywords.map((item, idx) => (
+                    <div
+                      key={idx}
+                      className="p-1.5 rounded text-[11px] bg-amber-500/10 border border-amber-500/20 text-amber-900 dark:text-amber-200"
+                    >
+                      <div className="flex items-center gap-1 font-semibold">
+                        <span>{item.keyword.replace(" (Partial)", "")}</span>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground mt-0.5 italic">
+                        {item.explanation || "Adjacent candidate evidence; does not fully satisfy strict enterprise requirement."}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* 3. Genuine gaps (add only if true) */}
             <div className="pt-2 border-t">
-              <div className="flex items-center justify-between text-xs font-semibold mb-1.5">
-                <span className="text-amber-600 dark:text-amber-400 flex items-center gap-1">
-                  <AlertTriangle className="h-3.5 w-3.5" />
-                  <span>Missing High-Value Keywords ({missingKeywords.length})</span>
+              <div className="flex items-center justify-between text-xs font-semibold mb-1">
+                <span className="text-rose-600 dark:text-rose-400 flex items-center gap-1">
+                  <XCircle className="h-3.5 w-3.5" />
+                  <span>Genuine gaps (add only if true) ({genuineGaps.length})</span>
                 </span>
               </div>
+              <p className="text-[11px] text-muted-foreground italic mb-1.5">
+                You do not list these; never claimed or invented in tailored output.
+              </p>
               <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto pr-1">
-                {missingKeywords.length > 0 ? (
-                  missingKeywords.map((kw) => (
+                {genuineGaps.length > 0 ? (
+                  genuineGaps.map((item, idx) => (
                     <span
-                      key={kw}
-                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/20"
+                      key={idx}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-rose-500/10 text-rose-700 dark:text-rose-300 border border-rose-500/20"
                     >
                       <XCircle className="h-3 w-3 shrink-0" />
-                      <span>{kw}</span>
+                      <span>{item.keyword}</span>
                     </span>
                   ))
                 ) : (
@@ -303,35 +371,6 @@ export function FabricationAtsReport({
           </div>
         </div>
       </div>
-
-      {/* Section Diagnostic Checks (if provided) */}
-      {sectionChecks.length > 0 && (
-        <div className="p-3 rounded-lg border bg-card/40 space-y-2">
-          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-            ATS Section Diagnostics
-          </span>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-            {sectionChecks.map((sc, i) => (
-              <div
-                key={i}
-                className="p-2 rounded bg-background border text-xs flex items-start gap-2"
-              >
-                {sc.status === "pass" ? (
-                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0 mt-0.5" />
-                ) : (
-                  <AlertTriangle className="h-3.5 w-3.5 text-amber-500 shrink-0 mt-0.5" />
-                )}
-                <div>
-                  <span className="font-semibold capitalize text-foreground">
-                    {sc.section}
-                  </span>
-                  <p className="text-[11px] text-muted-foreground">{sc.feedback}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 }

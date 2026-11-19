@@ -141,29 +141,21 @@ export async function downloadResumeDocx(artifactId: string): Promise<void> {
 
 export async function downloadResumePdf(
   artifactId: string,
-  sections?: ResumeSectionContent | null,
+  _sections?: ResumeSectionContent | null,
 ): Promise<void> {
   const token = getAccessToken();
-  let resumeContent = sections;
+  const response = await fetch(`/api/artifacts/${artifactId}/export?format=pdf`, {
+    method: "POST",
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
 
-  if (!resumeContent) {
-    const response = await fetch(`/api/artifacts/${artifactId}/export?format=pdf`, {
-      method: "POST",
-      headers: {
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error(`PDF export failed with HTTP ${response.status}`);
-    }
-
-    const json = await response.json();
-    resumeContent = json.data?.sections || json.data;
+  if (!response.ok) {
+    throw new Error(`PDF export failed with HTTP ${response.status}`);
   }
 
-  const html = generateAtsResumeHtml(resumeContent);
-  const blob = new Blob([html], { type: "application/pdf" });
+  const blob = await response.blob();
   const url = window.URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
