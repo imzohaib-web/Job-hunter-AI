@@ -26,6 +26,30 @@ logger = logging.getLogger("jobpilot.llm")
 T = TypeVar("T", bound=BaseModel)
 
 
+class TokenBucket:
+    """Thread-safe async token bucket rate limiter to prevent LLM rate spikes."""
+
+    def __init__(self, rate: float = 4.0, capacity: float = 8.0) -> None:
+        self.rate = rate
+        self.capacity = capacity
+        self.tokens = capacity
+        self.last_update = time.monotonic()
+        self._lock = asyncio.Lock()
+
+    async def acquire(self) -> None:
+        async with self._lock:
+            while True:
+                now = time.monotonic()
+                elapsed = now - self.last_update
+                self.last_update = now
+                self.tokens = min(self.capacity, self.tokens + elapsed * self.rate)
+                if self.tokens >= 1.0:
+                    self.tokens -= 1.0
+                    return
+                wait_time = (1.0 - self.tokens) / self.rate
+                await asyncio.sleep(min(wait_time, 0.5))
+
+
 class LLMClient:
     """Resilient multi-provider LLM client with structured output validation,
 
@@ -47,7 +71,9 @@ class LLMClient:
 
         self.max_retries = max_retries if max_retries is not None else settings.llm_max_retries
         self.timeout_seconds = (
-            timeout_seconds if timeout_seconds is not None else float(settings.llm_timeout_seconds)
+            min(30.0, float(settings.llm_timeout_seconds))
+            if timeout_seconds is None
+            else min(30.0, float(timeout_seconds))
         )
         self.base_backoff_seconds = base_backoff_seconds
 
@@ -55,6 +81,8 @@ class LLMClient:
             max_concurrency if max_concurrency is not None else settings.llm_max_concurrency
         )
         self._semaphore = asyncio.Semaphore(concurrency)
+        self._rate_limiter = TokenBucket(rate=4.0, capacity=8.0)
+        self._provider_cooldowns: dict[str, float] = {}
 
         self.cache = (
             cache
@@ -149,11 +177,24 @@ class LLMClient:
         last_error: Exception | None = None
 
         async with self._semaphore:
+            await self._rate_limiter.acquire()
             for provider_idx, provider_name in enumerate(self.provider_order):
                 provider = self._providers.get(provider_name)
                 if not provider:
                     logger.warning(
                         "Provider '%s' not registered in LLMClient, skipping.", provider_name
+                    )
+                    continue
+
+                # Check if provider is currently in cooldown from a 429 rate limit
+                cooldown_until = self._provider_cooldowns.get(provider_name, 0.0)
+                now_ts = time.time()
+                if now_ts < cooldown_until:
+                    remaining_cool = cooldown_until - now_ts
+                    logger.warning(
+                        "Provider '%s' in rate-limit cooldown for %.1fs, falling back to next provider.",
+                        provider_name,
+                        remaining_cool,
                     )
                     continue
 
@@ -211,16 +252,27 @@ class LLMClient:
                         last_error = exc
                         logger.warning(
                             "LLM provider error: task_name=%s provider=%s model=%s latency_ms=%.2f "
-                            "input_tokens=%d output_tokens=%d retries=%d success=%s",
+                            "status_code=%s message=%s success=false",
                             task_name,
                             provider.name,
                             provider.model_name,
                             call_latency,
-                            total_input_tokens,
-                            total_output_tokens,
-                            provider_retries,
-                            False,
+                            exc.status_code,
+                            exc.message,
                         )
+                        if exc.status_code == 429:
+                            cool_duration = (
+                                exc.retry_after if exc.retry_after is not None else 30.0
+                            )
+                            self._provider_cooldowns[provider_name] = time.time() + cool_duration
+                            logger.warning(
+                                "Provider '%s' rate limited (429). Cooldown %.1fs; falling back immediately.",
+                                provider_name,
+                                cool_duration,
+                            )
+                            # Fall back immediately to next provider on 429
+                            break
+
                         if exc.retryable and provider_retries < self.max_retries:
                             provider_retries += 1
                             await self._backoff(provider_retries)
@@ -313,6 +365,16 @@ class LLMClient:
                         else:
                             # Validation retries exhausted for this provider, fall to next provider
                             break
+
+        if last_error:
+            if isinstance(last_error, LLMProviderError) and last_error.status_code == 429:
+                raise LLMProviderError(
+                    provider="all",
+                    message="RATE_LIMITED: All configured LLM providers are rate-limited or unavailable.",
+                    status_code=429,
+                    retryable=False,
+                ) from last_error
+            raise last_error
 
         raise AllProvidersFailedError(
             f"All configured LLM providers ({self.provider_order}) failed for task '{task_name}'. "

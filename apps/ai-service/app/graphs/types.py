@@ -51,7 +51,12 @@ class PrepareApplicationState(TypedDict, total=False):
     raw_context: str | None
     company_insight: CompanyInsight | dict[str, Any] | None
     company_research_flagged: bool
+    intermediate_tailored: Any | None
+    keyword_plan: list[Any] | None
+    guard_reverted_claims: list[Any] | None
     tailored_resume: TailoredResume | dict[str, Any] | None
+    fabrication_report: Any | None
+    ats_report: Any | None
     fabrication_failed_twice: bool
     flagged_claims: list[UnsupportedClaim] | list[dict[str, Any]]
     interview_pack: InterviewPack | dict[str, Any] | None

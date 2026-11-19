@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import logging
+import re
+import time
+from urllib.parse import urlparse
 
 from app.llm.client import LLMClient
 from app.llm.security import wrap_untrusted
@@ -25,6 +28,63 @@ from app.services.company_research.web_fetcher import (
 
 logger = logging.getLogger("jobpilot.company_research_agent")
 
+JOB_BOARD_DOMAINS: set[str] = {
+    "remotive.com",
+    "indeed.com",
+    "linkedin.com",
+    "greenhouse.io",
+    "lever.co",
+    "ziprecruiter.com",
+    "glassdoor.com",
+    "workable.com",
+    "monster.com",
+    "ashbyhq.com",
+    "wellfound.com",
+    "angel.co",
+    "dice.com",
+    "simplyhired.com",
+    "adzuna.com",
+    "arbeitnow.com",
+    "ycombinator.com",
+    "smartrecruiters.com",
+    "jobvite.com",
+    "bamboohr.com",
+    "applytojob.com",
+    "recruitee.com",
+}
+
+# 7-day TTL cache for company research insights
+_COMPANY_INSIGHT_CACHE: dict[str, tuple[float, CompanyInsight]] = {}
+CACHE_TTL_SECONDS = 7 * 86400  # 7 days
+
+
+def derive_company_domain(company_name: str, job_url: str | None = None) -> str | None:
+    """Derive company website URL from job URL or company name."""
+    if job_url:
+        try:
+            parsed = urlparse(job_url)
+            netloc = parsed.netloc.lower()
+            if netloc.startswith("www."):
+                netloc = netloc[4:]
+            is_job_board = any(
+                netloc == jb or netloc.endswith("." + jb) for jb in JOB_BOARD_DOMAINS
+            )
+            if not is_job_board and netloc:
+                return f"https://{netloc}"
+        except Exception:
+            pass
+
+    cleaned_name = company_name.strip()
+    match = re.search(
+        r"([a-zA-Z0-9-]+\.(?:com|org|net|io|ai|co|dev|tech))\b",
+        cleaned_name,
+        re.IGNORECASE,
+    )
+    if match:
+        return f"https://{match.group(1).lower()}"
+
+    return None
+
 
 class CompanyResearchAgent:
     """Production research agent synthesizing website content, search snippets,
@@ -46,6 +106,13 @@ class CompanyResearchAgent:
     async def research(self, request: CompanyResearchRequest) -> CompanyInsight:
         """Execute comprehensive, secure company intelligence pipeline."""
         company_name = request.company_name.strip()
+        cache_key = re.sub(r"[^a-z0-9]", "", company_name.lower())
+        if cache_key in _COMPANY_INSIGHT_CACHE:
+            expire_at, cached_insight = _COMPANY_INSIGHT_CACHE[cache_key]
+            if time.time() < expire_at:
+                logger.info("Returning 7-day cached CompanyInsight for '%s'", company_name)
+                return cached_insight
+
         target_url = request.target_url
 
         sources: list[str] = []
@@ -175,7 +242,7 @@ class CompanyResearchAgent:
         # Combine limitations
         merged_limitations = list(dict.fromkeys(llm_output.limitations + limitations))
 
-        return CompanyInsight(
+        insight = CompanyInsight(
             summary=llm_output.summary,
             company_name=llm_output.company_name or company_name,
             products_or_services=llm_output.products_or_services,
@@ -188,3 +255,8 @@ class CompanyResearchAgent:
             confidence=round(final_confidence, 2),
             limitations=merged_limitations,
         )
+
+        if website_text or search_text:
+            _COMPANY_INSIGHT_CACHE[cache_key] = (time.time() + CACHE_TTL_SECONDS, insight)
+
+        return insight

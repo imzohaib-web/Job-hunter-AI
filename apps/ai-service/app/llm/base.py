@@ -29,6 +29,7 @@ class LLMProviderError(LLMError):
         status_code: int | None = None,
         retryable: bool = True,
         cause: Exception | None = None,
+        retry_after: float | None = None,
     ) -> None:
         super().__init__(f"Provider [{provider}] error: {message}")
         self.provider = provider
@@ -36,6 +37,7 @@ class LLMProviderError(LLMError):
         self.status_code = status_code
         self.retryable = retryable
         self.cause = cause
+        self.retry_after = retry_after
 
 
 class LLMValidationError(LLMError):

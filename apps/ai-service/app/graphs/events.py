@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 from collections.abc import AsyncGenerator
 
 from app.schemas.graph import ProgressEvent
@@ -16,16 +17,22 @@ class GraphEventManager:
         self._history: dict[str, list[ProgressEvent]] = {}
         self._subscribers: dict[str, set[asyncio.Queue[ProgressEvent | None]]] = {}
         self._completed_runs: set[str] = set()
+        self._last_event_timestamps: dict[str, float] = {}
         self._lock = asyncio.Lock()
 
     def get_events(self, run_id: str) -> list[ProgressEvent]:
         """Return full sequential history of progress events for a run."""
         return list(self._history.get(run_id, []))
 
+    def get_last_event_time(self, run_id: str) -> float:
+        """Return timestamp of the most recent event for run_id."""
+        return self._last_event_timestamps.get(run_id, time.time())
+
     async def emit(self, event: ProgressEvent) -> None:
         """Record and broadcast a progress event to all active SSE subscribers."""
         run_id = event.run_id
         async with self._lock:
+            self._last_event_timestamps[run_id] = time.time()
             if run_id not in self._history:
                 self._history[run_id] = []
             self._history[run_id].append(event)
@@ -83,6 +90,7 @@ class GraphEventManager:
         self._history.clear()
         self._subscribers.clear()
         self._completed_runs.clear()
+        self._last_event_timestamps.clear()
 
 
 # Global singleton event manager

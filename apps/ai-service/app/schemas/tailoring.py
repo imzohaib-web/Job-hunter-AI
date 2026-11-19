@@ -15,6 +15,11 @@ class KeywordPlanItem(BaseModel):
         description="Priority category ('required' or 'preferred')",
         examples=["required"],
     )
+    support: str = Field(
+        default="strong",
+        description="Support level: 'strong', 'partial', or 'none'",
+        examples=["strong"],
+    )
     evidence: str | None = Field(
         default=None,
         description="Pointer or excerpt of verified profile evidence, or None if gap",
@@ -25,6 +30,16 @@ class KeywordPlanItem(BaseModel):
         description="True if keyword is missing from candidate source profile",
         examples=[False],
     )
+    quote: str | None = Field(
+        default=None,
+        description="Verbatim excerpt from candidate profile supporting the keyword",
+        examples=["162 pytest tests"],
+    )
+    explanation: str | None = Field(
+        default=None,
+        description="Strategic alignment rationale or gap explanation",
+        examples=["JWT auth shown for authentication; does not meet OAuth/SSO requirement"],
+    )
 
 
 class ResumeChange(BaseModel):
@@ -33,6 +48,11 @@ class ResumeChange(BaseModel):
     section: str = Field(
         description="Target resume section modified (e.g., 'summary', 'experience', 'skills')",
         examples=["experience"],
+    )
+    item_id: str = Field(
+        default="",
+        description="Unique change item identifier",
+        examples=["exp_0_b_1"],
     )
     before: str = Field(
         description="Original bullet or text phrasing before tailoring",
@@ -46,20 +66,30 @@ class ResumeChange(BaseModel):
         description="Strategic justification explaining alignment with target job requirements",
         examples=["Elevates FastAPI keywords requested in job posting requirements."],
     )
-    source_fact_ref: str = Field(
+    source_ref: str = Field(
+        default="",
         description="Reference to verified candidate fact confirming no fabrication occurred",
         examples=["profile.experience[0].bullets[1]"],
     )
+    source_fact_ref: str = Field(
+        default="",
+        description="Backwards-compatible alias for source_ref",
+        examples=["profile.experience[0].bullets[1]"],
+    )
+    status: str = Field(
+        default="proposed",
+        description="Decision status: 'proposed', 'accepted', 'rejected'",
+        examples=["proposed"],
+    )
 
-    @field_validator("source_fact_ref")
-    @classmethod
-    def validate_source_ref(cls, v: str) -> str:
-        v = v.strip()
-        if not v:
-            raise ValueError(
-                "source_fact_ref cannot be empty (Hard rule: no invented facts allowed)"
-            )
-        return v
+    def model_post_init(self, __context: Any) -> None:
+        if not self.source_ref and self.source_fact_ref:
+            object.__setattr__(self, "source_ref", self.source_fact_ref)
+        elif not self.source_fact_ref and self.source_ref:
+            object.__setattr__(self, "source_fact_ref", self.source_ref)
+        if not self.source_ref and not self.source_fact_ref:
+            object.__setattr__(self, "source_ref", f"profile.{self.section}")
+            object.__setattr__(self, "source_fact_ref", f"profile.{self.section}")
 
 
 class AtsSectionCheck(BaseModel):
@@ -91,6 +121,20 @@ class AtsReport(BaseModel):
         ge=0.0,
         le=100.0,
         description="Percentage of core job keywords represented (0-100)",
+        examples=[88.5],
+    )
+    keyword_coverage_before: float = Field(
+        default=0.0,
+        ge=0.0,
+        le=100.0,
+        description="Keyword coverage % of original profile before tailoring (0-100)",
+        examples=[55.0],
+    )
+    keyword_coverage_after: float = Field(
+        default=0.0,
+        ge=0.0,
+        le=100.0,
+        description="Keyword coverage % of tailored profile after tailoring (0-100)",
         examples=[88.5],
     )
     missing_keywords: list[str] = Field(

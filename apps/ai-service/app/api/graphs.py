@@ -17,6 +17,18 @@ from app.schemas.graph import (
     PrepareApplicationResponse,
     ResumeGraphResponse,
 )
+from pydantic import BaseModel, Field
+
+
+class RetryNodeRequest(BaseModel):
+    node: str = Field(description="Name of the node to rerun (e.g. 'tailor_resume')")
+
+
+class RetryNodeResponse(BaseModel):
+    run_id: str
+    node: str
+    status: str
+    message: str
 
 router = APIRouter(prefix="/v1/graphs", tags=["Graph Orchestration"])
 logger = logging.getLogger("jobpilot.api.graphs")
@@ -118,6 +130,33 @@ async def resume_graph(run_id: str) -> ResumeGraphResponse:
             run_id=run_id,
             status="running",
             message="Graph execution resumed successfully from checkpoint.",
+        )
+    except KeyError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "RUN_NOT_FOUND", "message": f"Graph run '{run_id}' not found."},
+        ) from None
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={"code": "ALREADY_RUNNING", "message": str(exc)},
+        ) from exc
+
+
+@router.post(
+    "/{run_id}/retry-node",
+    response_model=RetryNodeResponse,
+    summary="Rerun only a failed node using stored state from earlier nodes",
+)
+async def retry_graph_node(run_id: str, payload: RetryNodeRequest) -> RetryNodeResponse:
+    """Rerun only the failed node without re-executing already completed nodes."""
+    try:
+        await run_manager.retry_node(run_id, payload.node)
+        return RetryNodeResponse(
+            run_id=run_id,
+            node=payload.node,
+            status="running",
+            message=f"Node '{payload.node}' rerun initiated successfully.",
         )
     except KeyError:
         raise HTTPException(

@@ -37,6 +37,7 @@ from app.services.tailoring import (
     FabricationChecker,
     ResumeTailorAgent,
     build_docx_resume,
+    build_pdf_resume,
 )
 from app.services.tailoring.schemas import ResumeRewriteLLMOutput
 
@@ -390,6 +391,27 @@ async def export_resume_docx(payload: ExportResumeDocxRequest) -> Response:
     return Response(
         content=docx_stream.getvalue(),
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+        },
+    )
+
+
+@router.post(
+    "/v1/export-resume-pdf",
+    summary="Export verified resume into single-column ATS-friendly PDF",
+)
+@router.post(
+    "/api/v1/resume/export-pdf",
+    summary="Export verified resume into single-column ATS-friendly PDF",
+)
+async def export_resume_pdf(payload: ExportResumeDocxRequest) -> Response:
+    pdf_stream = build_pdf_resume(payload.resume, payload.target_job_title)
+    name_slug = payload.resume.name.replace(" ", "_") if payload.resume.name else "Resume"
+    filename = f"{name_slug}_ATS_Resume.pdf"
+    return Response(
+        content=pdf_stream.getvalue(),
+        media_type="application/pdf",
         headers={
             "Content-Disposition": f'attachment; filename="{filename}"',
         },

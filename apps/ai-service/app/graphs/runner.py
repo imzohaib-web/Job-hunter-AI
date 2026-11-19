@@ -193,6 +193,106 @@ class GraphRunManager:
         record.task = task
         return run_id
 
+    async def retry_node(self, run_id: str, node_name: str) -> str:
+        """Rerun only the specified failed node using stored state from earlier nodes."""
+        async with self._lock:
+            record = self._runs.get(run_id)
+            if not record:
+                raise KeyError(f"Run ID '{run_id}' not found.")
+
+            if record.status == "running":
+                raise ValueError(f"Run '{run_id}' is already actively executing.")
+
+            record.status = "running"
+            record.updated_at = utc_iso_now()
+
+        await event_manager.emit(
+            ProgressEvent(
+                run_id=run_id,
+                node=node_name,
+                status="running",
+                started_at=utc_iso_now(),
+                ended_at=None,
+                message=f"Retrying node '{node_name}'...",
+            )
+        )
+
+        task = asyncio.create_task(self._execute_retry_node(record, node_name))
+        record.task = task
+        return run_id
+
+    async def _execute_retry_node(self, record: RunRecord, target_node: str) -> None:
+        """Execute only the specific node and subsequent required join nodes."""
+        run_id = record.run_id
+        state = dict(record.state or {})
+        state["run_id"] = run_id
+
+        try:
+            from app.graphs.prepare_application import (
+                node_assemble_result,
+                node_company_research,
+                node_fabrication_check,
+                node_tailor_resume,
+            )
+
+            if target_node == "company_research":
+                cr_res = await node_company_research(state)
+                state.update(cr_res)
+                tr_res = await node_tailor_resume(state)
+                state.update(tr_res)
+                fc_res = await node_fabrication_check(state)
+                state.update(fc_res)
+                ar_res = await node_assemble_result(state)
+                state.update(ar_res)
+            elif target_node == "tailor_resume":
+                tr_res = await node_tailor_resume(state)
+                state.update(tr_res)
+                fc_res = await node_fabrication_check(state)
+                state.update(fc_res)
+                ar_res = await node_assemble_result(state)
+                state.update(ar_res)
+            elif target_node == "fabrication_check":
+                fc_res = await node_fabrication_check(state)
+                state.update(fc_res)
+                ar_res = await node_assemble_result(state)
+                state.update(ar_res)
+            else:
+                ar_res = await node_assemble_result(state)
+                state.update(ar_res)
+
+            record.state = state
+            record.status = "completed"
+            record.updated_at = utc_iso_now()
+
+            await event_manager.emit(
+                ProgressEvent(
+                    run_id=run_id,
+                    node="system",
+                    status="done",
+                    started_at=utc_iso_now(),
+                    ended_at=utc_iso_now(),
+                    message=f"Node '{target_node}' retry completed successfully.",
+                )
+            )
+        except Exception as exc:  # noqa: BLE001
+            record.status = "failed"
+            record.error = str(exc)
+            record.updated_at = utc_iso_now()
+            logger.error("Node retry '%s' in run '%s' failed: %s", target_node, run_id, exc)
+
+            await event_manager.emit(
+                ProgressEvent(
+                    run_id=run_id,
+                    node=target_node,
+                    status="failed",
+                    started_at=utc_iso_now(),
+                    ended_at=utc_iso_now(),
+                    message=f"Retry of '{target_node}' failed: {exc}",
+                )
+            )
+        finally:
+            await event_manager.complete_stream(run_id)
+
     async def kill_run(self, run_id: str) -> None:
         """Terminate a running graph task immediately."""
         async with self._lock:
@@ -279,22 +379,64 @@ class GraphRunManager:
         record.updated_at = utc_iso_now()
 
         try:
-            # ainvoke with input_data (if first run) or None (if resuming)
-            final_state = await record.graph.ainvoke(input_data, config=config)
-            record.state = final_state
-            record.status = "completed"
-            record.updated_at = utc_iso_now()
+            # Launch 120s watchdog to fail any run that emits no event for 120s
+            watchdog_done = asyncio.Event()
 
-            await event_manager.emit(
-                ProgressEvent(
-                    run_id=run_id,
-                    node="system",
-                    status="done",
-                    started_at=utc_iso_now(),
-                    ended_at=utc_iso_now(),
-                    message=f"Graph '{record.graph_type}' execution completed successfully.",
+            async def _watchdog() -> None:
+                while not watchdog_done.is_set():
+                    try:
+                        await asyncio.sleep(5.0)
+                        last_time = event_manager.get_last_event_time(run_id)
+                        if time.time() - last_time > 120.0:
+                            logger.error(
+                                "Watchdog triggered: no progress event emitted for 120s in run %s",
+                                run_id,
+                            )
+                            record.status = "failed"
+                            record.error = "Watchdog timeout: no progress event received for 120s."
+                            await event_manager.emit(
+                                ProgressEvent(
+                                    run_id=run_id,
+                                    node="system",
+                                    status="failed",
+                                    started_at=utc_iso_now(),
+                                    ended_at=utc_iso_now(),
+                                    message=(
+                                        "Watchdog timeout: run failed because no progress event "
+                                        "was received for 120s."
+                                    ),
+                                )
+                            )
+                            if record.task and not record.task.done():
+                                record.task.cancel()
+                            break
+                    except asyncio.CancelledError:
+                        break
+                    except Exception:  # noqa: BLE001
+                        pass
+
+            watchdog_task = asyncio.create_task(_watchdog())
+
+            try:
+                # ainvoke with input_data (if first run) or None (if resuming)
+                final_state = await record.graph.ainvoke(input_data, config=config)
+                record.state = final_state
+                record.status = "completed"
+                record.updated_at = utc_iso_now()
+
+                await event_manager.emit(
+                    ProgressEvent(
+                        run_id=run_id,
+                        node="system",
+                        status="done",
+                        started_at=utc_iso_now(),
+                        ended_at=utc_iso_now(),
+                        message=f"Graph '{record.graph_type}' execution completed successfully.",
+                    )
                 )
-            )
+            finally:
+                watchdog_done.set()
+                watchdog_task.cancel()
 
         except asyncio.CancelledError:
             record.status = "stopped"

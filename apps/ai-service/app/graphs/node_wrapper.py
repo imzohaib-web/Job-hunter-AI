@@ -105,9 +105,34 @@ def wrap_node(
             )
             raise
 
+        except (TimeoutError, asyncio.TimeoutError) as exc:
+            end_time = utc_iso_now()
+            err_msg = f"Node '{node_name}' timed out after {timeout_seconds:.0f}s"
+            logger.error("Timeout in node '%s' after %.1fs: %s", node_name, timeout_seconds, exc)
+
+            await event_manager.emit(
+                ProgressEvent(
+                    run_id=run_id,
+                    node=node_name,
+                    status="failed",
+                    started_at=start_time,
+                    ended_at=end_time,
+                    message=f"{err_msg} (error code: NODE_TIMEOUT)",
+                )
+            )
+
+            if fatal or isinstance(exc, FatalNodeError):
+                raise
+
+            return {
+                "node_status": {node_name: "failed"},
+                "errors": {node_name: f"NODE_TIMEOUT: {err_msg}"},
+            }
+
         except Exception as exc:  # noqa: BLE001
             end_time = utc_iso_now()
-            err_msg = str(exc) or type(exc).__name__
+            error_code = type(exc).__name__
+            err_msg = str(exc) or error_code
             logger.error("Error executing node '%s': %s", node_name, exc, exc_info=True)
 
             await event_manager.emit(
@@ -117,7 +142,7 @@ def wrap_node(
                     status="failed",
                     started_at=start_time,
                     ended_at=end_time,
-                    message=f"Node '{node_name}' failed: {err_msg}",
+                    message=f"Node '{node_name}' failed: {err_msg} (error code: {error_code})",
                 )
             )
 
@@ -127,7 +152,7 @@ def wrap_node(
             # Non-fatal: isolate error and allow graph conditional edges to decide flow
             return {
                 "node_status": {node_name: "failed"},
-                "errors": {node_name: err_msg},
+                "errors": {node_name: f"{error_code}: {err_msg}"},
             }
 
     return wrapped_node

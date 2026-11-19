@@ -45,7 +45,9 @@ class GroqProvider(BaseLLMProvider):
 
         from groq import AsyncGroq
 
-        self._client = AsyncGroq(api_key=self._api_key)
+        # Disable Groq internal SDK retries (max_retries=0) so LLMClient can fail fast
+        # and immediately fall back to Gemini without sleeping inside groq's retry loop.
+        self._client = AsyncGroq(api_key=self._api_key, max_retries=0)
         return self._client
 
     async def generate(
@@ -117,12 +119,21 @@ class GroqProvider(BaseLLMProvider):
                 provider=self.name,
             )
         except RateLimitError as exc:
+            retry_after = None
+            if hasattr(exc, "response") and exc.response is not None:
+                header_val = exc.response.headers.get("retry-after")
+                if header_val:
+                    try:
+                        retry_after = float(header_val)
+                    except (ValueError, TypeError):
+                        pass
             raise LLMProviderError(
                 provider=self.name,
                 message=str(exc),
                 status_code=429,
                 retryable=True,
                 cause=exc,
+                retry_after=retry_after,
             ) from exc
         except APITimeoutError as exc:
             raise LLMProviderError(
