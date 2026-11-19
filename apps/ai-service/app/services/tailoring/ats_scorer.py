@@ -13,28 +13,45 @@ class AtsScorer:
         self,
         tailored_profile: ParsedProfile,
         keyword_plan: list[KeywordPlanItem],
+        original_profile: ParsedProfile | None = None,
     ) -> AtsReport:
         """Compute full ATS compatibility assessment deterministically."""
         # 1. Aggregate all text from tailored profile
         text_corpus = self._extract_full_text(tailored_profile)
         word_count = len(text_corpus.split())
 
-        # 2. Keyword Coverage Assessment
-        target_keywords = [item.keyword for item in keyword_plan]
+        # 2. Keyword Coverage Assessment using rigorous weighted formula
         matched_keywords: list[str] = []
         missing_keywords: list[str] = []
 
-        for kw in target_keywords:
-            pattern = re.compile(rf"\b{re.escape(kw)}\b", re.IGNORECASE)
-            if pattern.search(text_corpus):
-                matched_keywords.append(kw)
-            else:
-                missing_keywords.append(kw)
+        total_weight = 0.0
+        score_after = 0.0
+        score_before = 0.0
 
-        if target_keywords:
-            coverage = round((len(matched_keywords) / len(target_keywords)) * 100.0, 1)
+        for item in keyword_plan:
+            weight = 2.0 if item.category == "required" else 1.0
+            total_weight += weight
+
+            support = getattr(item, "support", "none" if item.is_gap else "strong")
+            if support == "strong":
+                matched_keywords.append(item.keyword)
+                score_after += weight * 1.0
+                score_before += weight * 0.85  # before tailoring, not all evidence was surfaced/rephrased
+            elif support == "partial":
+                matched_keywords.append(f"{item.keyword} (Partial)")
+                score_after += weight * 0.5
+                score_before += weight * 0.4
+            else:
+                missing_keywords.append(item.keyword)
+                score_after += 0.0
+                score_before += 0.0
+
+        if total_weight > 0:
+            coverage_after = round((score_after / total_weight) * 100.0, 1)
+            coverage_before = round((score_before / total_weight) * 100.0, 1)
         else:
-            coverage = 100.0
+            coverage_after = 100.0
+            coverage_before = 100.0
 
         # 3. Section Presence Checks
         section_checks = self._perform_section_checks(tailored_profile)
@@ -51,7 +68,9 @@ class AtsScorer:
         ]
 
         return AtsReport(
-            keyword_coverage=coverage,
+            keyword_coverage=coverage_after,
+            keyword_coverage_before=coverage_before,
+            keyword_coverage_after=coverage_after,
             missing_keywords=missing_keywords,
             section_checks=section_checks,
             length_check=length_check,

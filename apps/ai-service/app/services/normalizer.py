@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from typing import Any
 
 from app.schemas.profile import ParsedProfile, ProfileSkill
 
@@ -171,9 +172,9 @@ def deduplicate_skills(skills: list[ProfileSkill]) -> list[ProfileSkill]:
 def validate_contact_info(
     email: str | None,
     phone: str | None,
-    links: list[str],
-) -> tuple[str | None, str | None, list[str]]:
-    """Validate email, phone, and URLs using strict regex."""
+    links: list[Any],
+) -> tuple[str | None, str | None, list[Any]]:
+    """Validate email, phone, and URLs while preserving structured ProfileLinks."""
     clean_email: str | None = None
     if email:
         email_clean = email.strip().lower()
@@ -186,13 +187,21 @@ def validate_contact_info(
         if len(digits_only) >= 7:
             clean_phone = phone.strip()
 
-    clean_links: list[str] = []
+    clean_links: list[Any] = []
     for link in links:
-        l_str = link.strip()
-        if not l_str.startswith("http://") and not l_str.startswith("https://"):
-            l_str = f"https://{l_str}"
-        if re.match(r"^https?://[a-zA-Z0-9\-.]+\.[a-zA-Z]{2,}(/.*)?$", l_str):
-            clean_links.append(l_str)
+        if isinstance(link, dict):
+            lbl = link.get("label", "Link")
+            url = link.get("url", "")
+            if url:
+                clean_links.append(link)
+        elif hasattr(link, "label") and hasattr(link, "url"):
+            clean_links.append(link)
+        elif isinstance(link, str):
+            l_str = link.strip()
+            if not l_str.startswith("http://") and not l_str.startswith("https://"):
+                l_str = f"https://{l_str}"
+            if re.match(r"^https?://[a-zA-Z0-9\-.]+\.[a-zA-Z]{2,}(/.*)?$", l_str):
+                clean_links.append(l_str)
 
     return clean_email, clean_phone, clean_links
 
@@ -308,8 +317,11 @@ def post_process_parsed_profile(
     for proj in profile.projects:
         proj.technologies = [canonicalize_skill(t) for t in proj.technologies]
 
-    # 2. Deduplicate skills with alias map
-    profile.skills = deduplicate_skills(profile.skills)
+    # 2. Synchronize skill groups and flat skills without dropping custom categories
+    profile.sync_skill_groups()
+    if profile.skills:
+        profile.skills = deduplicate_skills(profile.skills)
+        profile.sync_skill_groups()
 
     # 3. Validate contact info
     email, phone, links = validate_contact_info(profile.email, profile.phone, profile.links)

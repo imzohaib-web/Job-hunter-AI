@@ -18,30 +18,35 @@ from app.services.text_extractor import extract_resume_text
 logger = logging.getLogger("jobpilot.resume_parser")
 
 RESUME_EXTRACTION_PROMPT = """You are an expert resume parsing specialist.
-Extract the candidate's structured profile accurately from the segmented resume text provided below.
+Extract the candidate's structured profile accurately from the segmented resume text provided below with ZERO loss of content.
 
 Instructions:
 1. Extract facts strictly present in the resume text. Never invent degrees, employers, metrics, or skills.
 2. Extract in this order:
-   - Contact details (full name, email, phone, location, links) and professional summary.
-   - Work experience: company, title, start date, end date, bullet points, and technologies used.
-   - Education: institution, degree, field of study, graduation dates, GPA.
-   - Projects: project name, description, technologies, and URLs.
-   - Core technical skills: categorize each skill (Languages, Frameworks, Cloud, Databases, Tools). Provide concise evidence.
-3. Keep descriptions factual and concise so the entire structured profile fits completely within the output token budget.
+   - Contact details: full name, headline/title (if present), email, phone, location.
+   - Links: extract as structured objects with label and url (for example label 'GitHub' with its url, label 'LinkedIn' with its url, label 'Portfolio' with its url).
+   - Professional summary.
+   - Skills: preserve the candidate's EXACT skill categories and groupings (e.g. 'Backend', 'AI / LLM', 'Databases', 'Frontend', 'Languages', 'Tools & Deployment', 'Fundamentals') in `skill_groups` with group label and list of items. Also populate `skills` with ProfileSkill items.
+   - Work experience: company, title, start date, end date, location, `is_current`, bullet points preserving all metrics and quantified achievements, and technologies.
+   - Key projects: project name, `context_line` (e.g. team size, supervisor, hackathon award, stack), year/dates, tech stack, and ALL accomplishment bullet points (`bullets`) preserving exact numbers and metrics (e.g. 10 FastAPI routers, 27 endpoints, 162 pytest tests, 6 modules, offline fallback).
+   - Education: institution, degree, field of study (if distinct from degree), start date, end date, `expected` (true if ongoing/expected), `gpa` (e.g. "3.3"), `gpa_scale` (e.g. "4.0"), `coursework` (list of course titles: Data Structures & Algorithms, Object-Oriented Programming, Machine Learning, etc.), honors.
+   - Certifications: name, issuer, year/date, url.
+   - Scholarships & Awards: name, issuer, year, description in `scholarships`.
+3. Do not invent any facts, and do NOT truncate or collapse bullets into single paragraphs.
 
 Segmented Resume Content:
 {segmented_resume_data}
 """
 
 SIMPLIFIED_EXTRACTION_PROMPT = """You are an expert resume parsing specialist.
-Extract ONLY the core work experience, education, and skills from the resume text provided below.
+Extract the core work experience, education, projects, and skills from the resume text provided below without losing details.
 
 Instructions:
 1. Extract all work experience entries (company, title, start date, end date, bullet points, technologies).
-2. Extract all education entries (institution, degree, field of study, graduation dates, GPA).
-3. Extract core technical skills with categories.
-4. Extract facts strictly present in the resume text. Keep bullet points concise.
+2. Extract all education entries (institution, degree, field of study, graduation dates, GPA, coursework).
+3. Extract all projects with their context lines and individual bullet points.
+4. Extract technical skills preserving category groups (Backend, AI / LLM, Databases, Frontend, Languages, Tools & Deployment, Fundamentals).
+5. Extract facts strictly present in the resume text. Never collapse bullets into paragraphs.
 
 Resume Content:
 {segmented_resume_data}
@@ -139,6 +144,7 @@ async def parse_resume_content(
                     skills=simplified.skills,
                     experience=simplified.experience,
                     education=simplified.education,
+                    projects=simplified.projects,
                 )
             else:
                 if len(llm_output.experience) == 0 and simplified.experience:
@@ -147,6 +153,8 @@ async def parse_resume_content(
                     llm_output.education = simplified.education
                 if len(llm_output.skills) == 0 and simplified.skills:
                     llm_output.skills = simplified.skills
+                if len(llm_output.projects) == 0 and simplified.projects:
+                    llm_output.projects = simplified.projects
 
             warnings.append("Applied fallback simplified extraction to recover resume sections.")
         except Exception as fallback_exc:
