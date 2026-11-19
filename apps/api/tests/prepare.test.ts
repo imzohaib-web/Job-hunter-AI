@@ -97,6 +97,121 @@ describe("Prompt 14: Application Preparation Flow, Artifacts & Tracker", () => {
     expect(res.body.error.code).toBe("PROFILE_NOT_VERIFIED");
   });
 
+  it("409 Guard: Refuses prepare application if job description is empty", async () => {
+    // Seed verified resume
+    await Resume.create({
+      userId,
+      original: {
+        filename: "verified.pdf",
+        storageKey: "resumes/verified.pdf",
+        mimeType: "application/pdf",
+        size: 2048,
+        uploadedAt: new Date(),
+      },
+      status: "ready",
+      version: 1,
+      verifiedProfile: {
+        name: "Job Preparer",
+        email: "preparer@example.com",
+        summary: "Verified dev",
+        skills: [{ name: "Python" }],
+        experience: [],
+      },
+    });
+
+    // Create job with empty description
+    const emptyJob = await Job.create({
+      source: "greenhouse",
+      externalId: "empty-desc-job",
+      hash: "hash:empty-desc-job",
+      title: "Silent Developer",
+      company: "Ghost Corp",
+      location: "Remote",
+      description: "   ",
+      skills: [],
+      url: "https://example.com/job/empty",
+      postedAt: new Date(),
+    });
+
+    const emptyMatch = await Match.create({
+      userId,
+      jobId: emptyJob._id,
+      score: 50,
+      matchedSkills: [],
+      missingSkills: [],
+    });
+
+    const res = await request(app)
+      .post(`/api/matches/${emptyMatch._id}/prepare`)
+      .set("Authorization", `Bearer ${userToken}`);
+
+    expect(res.status).toBe(409);
+    expect(res.body.error.code).toBe("JOB_DESCRIPTION_EMPTY");
+  });
+
+  it("Run Persistence & Retry: GET /api/runs/:id restores state and POST /api/runs/:id/retry-node retries node", async () => {
+    const { Run } = await import("../src/models/Run.js");
+    const testRunId = "run-persistence-test-123";
+
+    await Run.create({
+      runId: testRunId,
+      userId,
+      matchId,
+      jobId,
+      status: "running",
+      nodeStatus: {
+        company_research: {
+          status: "skipped",
+          message: "no company website found",
+          durationMs: 50,
+        },
+        tailor_resume: {
+          status: "failed",
+          message: "Rate limit encountered",
+          error: "Rate limit encountered",
+        },
+      },
+      events: [
+        {
+          node: "company_research",
+          status: "skipped",
+          message: "no company website found",
+          timestamp: new Date(),
+        },
+      ],
+    });
+
+    // Verify GET /api/runs/:id restores run snapshot
+    const getRes = await request(app)
+      .get(`/api/runs/${testRunId}`)
+      .set("Authorization", `Bearer ${userToken}`);
+
+    expect(getRes.status).toBe(200);
+    expect(getRes.body.data.runId).toBe(testRunId);
+    expect(getRes.body.data.nodeStatus.company_research.status).toBe("skipped");
+    expect(getRes.body.data.nodeStatus.tailor_resume.status).toBe("failed");
+
+    // Mock retry-node in ai-service
+    aiMock.onPost(`/v1/graphs/${testRunId}/retry-node`).reply(200, {
+      run_id: testRunId,
+      node: "tailor_resume",
+      status: "running",
+    });
+
+    // Test POST /api/runs/:id/retry-node
+    const retryRes = await request(app)
+      .post(`/api/runs/${testRunId}/retry-node`)
+      .set("Authorization", `Bearer ${userToken}`)
+      .send({ node: "tailor_resume" });
+
+    expect(retryRes.status).toBe(200);
+    expect(retryRes.body.data.node).toBe("tailor_resume");
+
+    // Verify Run doc was updated to running
+    const updatedRun = await Run.findOne({ runId: testRunId });
+    expect(updatedRun?.nodeStatus?.tailor_resume?.status).toBe("running");
+  });
+
   it("Prepare Flow: calls ai-service graph, logs LlmRun without prompt text, and stores artifacts", async () => {
     // Seed verified resume
     await Resume.create({
