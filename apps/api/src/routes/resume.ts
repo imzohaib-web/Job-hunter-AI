@@ -6,6 +6,7 @@ import {
   getResumeDebug,
   listResumes,
   patchResumeProfile,
+  reparseResume,
   uploadResume,
   verifyResumeForTailoring,
 } from "../controllers/resumeController.js";
@@ -30,6 +31,8 @@ resumeRouter.patch(
   validate({ body: patchProfileSchema }),
   asyncHandler(patchResumeProfile),
 );
+resumeRouter.post("/:id/reparse", requireAuth, asyncHandler(reparseResume));
+resumeRouter.post("/:id/re-parse", requireAuth, asyncHandler(reparseResume));
 resumeRouter.delete("/:id", requireAuth, asyncHandler(deleteResume));
 resumeRouter.get(
   "/:id/tailoring-check",

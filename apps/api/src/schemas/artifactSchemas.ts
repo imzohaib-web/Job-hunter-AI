@@ -5,6 +5,7 @@ export const approveChangesSchema = z.object({
   decisions: z
     .array(
       z.object({
+        changeId: z.string().optional(),
         id: z.string().optional(),
         section: z.string().optional(),
         index: z.number().int().optional(),

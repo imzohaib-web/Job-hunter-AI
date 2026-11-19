@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 import { Types } from "mongoose";
 import { Artifact } from "../models/Artifact.js";
+import { Match } from "../models/Match.js";
 import type {
   ApproveChangesInput,
   ExportArtifactQuery,
@@ -65,9 +66,21 @@ export async function approveChanges(
   // Process decisions list
   if (Array.isArray(decisions)) {
     for (const dec of decisions) {
-      if (typeof dec.index === "number" && changes[dec.index]) {
-        changes[dec.index].approved = dec.accepted;
-        applyChangeToSections(sections, changes[dec.index], dec.accepted);
+      let targetChange: any = null;
+      if (dec.changeId || dec.id) {
+        const targetId = dec.changeId || dec.id;
+        targetChange = changes.find(
+          (c: any) => c.item_id === targetId || c.id === targetId,
+        );
+      }
+      if (!targetChange && typeof dec.index === "number" && changes[dec.index]) {
+        targetChange = changes[dec.index];
+      }
+
+      if (targetChange) {
+        targetChange.approved = dec.accepted;
+        targetChange.status = dec.accepted ? "accepted" : "rejected";
+        applyChangeToSections(sections, targetChange, dec.accepted);
       }
     }
   } else if (Array.isArray(approvedChangeIds)) {
@@ -105,6 +118,20 @@ function applyChangeToSections(
         const bulletIdx = exp.bullets.indexOf(oldText);
         if (bulletIdx !== -1) {
           exp.bullets[bulletIdx] = targetText;
+          break;
+        }
+      }
+    }
+  } else if (change.section === "projects" && Array.isArray((sections as any).projects)) {
+    for (const proj of (sections as any).projects) {
+      if (proj && proj.description === oldText) {
+        proj.description = targetText;
+        break;
+      }
+      if (proj && Array.isArray(proj.bullets)) {
+        const bulletIdx = proj.bullets.indexOf(oldText);
+        if (bulletIdx !== -1) {
+          proj.bullets[bulletIdx] = targetText;
           break;
         }
       }
@@ -195,13 +222,32 @@ export async function exportArtifact(
   const content = (artifact.content || {}) as TailoredResumeContent;
   const resumeToExport = content.sections || content;
 
+  // Resolve target job title cleanly (never generic "Tailored Role")
+  let targetJobTitle = (resumeToExport as any).headline;
+  if (!targetJobTitle || targetJobTitle.toLowerCase() === "tailored role") {
+    if (artifact.matchId) {
+      try {
+        const matchDoc = await Match.findById(artifact.matchId).populate("jobId").lean();
+        const jobObj = matchDoc?.jobId as any;
+        if (jobObj && jobObj.title) {
+          targetJobTitle = jobObj.title;
+        }
+      } catch {
+        // ignore
+      }
+    }
+  }
+  if (!targetJobTitle || targetJobTitle.toLowerCase() === "tailored role") {
+    targetJobTitle = "Full-Stack Developer | Python, FastAPI, React";
+  }
+
   if (format === "docx") {
     try {
       const exportRes = await aiClient.post(
         "/v1/export-resume-docx",
         {
           resume: resumeToExport,
-          target_job_title: "Tailored Role",
+          target_job_title: targetJobTitle,
         },
         {
           responseType: "arraybuffer",
@@ -215,11 +261,29 @@ export async function exportArtifact(
       res.setHeader("Content-Disposition", 'attachment; filename="Tailored_Resume.docx"');
       res.status(200).send(Buffer.from(exportRes.data));
     } catch {
-      // In case ai-service DOCX export fails, send a fallback response
       throw new AppError(500, "EXPORT_FAILED", "Failed to export resume DOCX");
     }
+  } else if (format === "pdf") {
+    try {
+      const exportRes = await aiClient.post(
+        "/v1/export-resume-pdf",
+        {
+          resume: resumeToExport,
+          target_job_title: targetJobTitle,
+        },
+        {
+          responseType: "arraybuffer",
+        },
+      );
+
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", 'attachment; filename="Tailored_Resume.pdf"');
+      res.status(200).send(Buffer.from(exportRes.data));
+    } catch {
+      throw new AppError(500, "EXPORT_FAILED", "Failed to export resume PDF");
+    }
   } else {
-    // PDF or fallback format
+    // JSON or fallback format
     res.setHeader("Content-Type", "application/json");
     res.status(200).json({ data: resumeToExport });
   }

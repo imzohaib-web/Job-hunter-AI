@@ -5,6 +5,7 @@ import { enqueueResumeParse } from "../queues/resumeQueue.js";
 import { processParseResumeJob } from "../queues/resumeWorker.js";
 import { validateResumeFile } from "../services/resumeFileValidator.js";
 import { LocalStorageService, getStorageService } from "../services/storage/index.js";
+import { aiClient } from "../services/aiClient.js";
 import { AppError } from "../types/errors.js";
 import { logger } from "../utils/logger.js";
 
@@ -183,6 +184,103 @@ export async function patchResumeProfile(req: Request, res: Response): Promise<v
 
   res.status(200).json({
     resume,
+  });
+}
+
+export async function reparseResume(req: Request, res: Response): Promise<void> {
+  const userId = req.user?.id;
+  const { id } = req.params;
+
+  const resume = await Resume.findOne({ _id: id, userId });
+  if (!resume) {
+    throw new AppError("NOT_FOUND", "Resume not found", 404);
+  }
+
+  const storage = getStorageService();
+  const fileBuffer = await storage.get(resume.original.storageKey);
+
+  const FormData = (await import("form-data")).default;
+  const formData = new FormData();
+  formData.append("file", fileBuffer, {
+    filename: resume.original.filename,
+    contentType: resume.original.mimeType,
+  });
+
+  const parseRes = await aiClient.post("/v1/parse-resume", formData, {
+    headers: formData.getHeaders(),
+    timeout: 30000,
+  });
+
+  const parsed: any = parseRes.data.data;
+  resume.parsedProfile = parsed;
+
+  // Lossless migration: merge newly extracted fields into verifiedProfile without losing existing edits
+  if (resume.verifiedProfile) {
+    const verified: any = { ...resume.verifiedProfile };
+    // 1. Headline
+    if (!verified.headline && parsed.headline) {
+      verified.headline = parsed.headline;
+    }
+    // 2. Links
+    if ((!verified.links || verified.links.length === 0) && parsed.links) {
+      verified.links = parsed.links;
+    }
+    // 3. Skill groups
+    if ((!verified.skill_groups || verified.skill_groups.length === 0) && parsed.skill_groups) {
+      verified.skill_groups = parsed.skill_groups;
+    }
+    // 4. Project context_line and bullets
+    if (Array.isArray(verified.projects) && Array.isArray(parsed.projects)) {
+      for (const vp of verified.projects) {
+        const matchingParsed = parsed.projects.find(
+          (p: any) => p.name?.toLowerCase() === vp.name?.toLowerCase()
+        );
+        if (matchingParsed) {
+          if (!vp.context_line && matchingParsed.context_line) {
+            vp.context_line = matchingParsed.context_line;
+          }
+          if ((!vp.bullets || vp.bullets.length === 0) && matchingParsed.bullets) {
+            vp.bullets = matchingParsed.bullets;
+          }
+        }
+      }
+    }
+    // 5. Education coursework and GPA scale
+    if (Array.isArray(verified.education) && Array.isArray(parsed.education)) {
+      for (const ve of verified.education) {
+        const matchingParsed = parsed.education.find(
+          (e: any) => e.institution?.toLowerCase() === ve.institution?.toLowerCase()
+        );
+        if (matchingParsed) {
+          if ((!ve.coursework || ve.coursework.length === 0) && matchingParsed.coursework) {
+            ve.coursework = matchingParsed.coursework;
+          }
+          if (!ve.gpa_scale && matchingParsed.gpa_scale) {
+            ve.gpa_scale = matchingParsed.gpa_scale;
+          }
+          if (ve.expected === undefined && matchingParsed.expected !== undefined) {
+            ve.expected = matchingParsed.expected;
+          }
+        }
+      }
+    }
+    // 6. Scholarships
+    if ((!verified.scholarships || verified.scholarships.length === 0) && parsed.scholarships) {
+      verified.scholarships = parsed.scholarships;
+    }
+    resume.verifiedProfile = verified;
+  } else {
+    resume.verifiedProfile = parsed;
+  }
+  resume.markModified("parsedProfile");
+  resume.markModified("verifiedProfile");
+
+  resume.version += 1;
+  await resume.save();
+
+  res.status(200).json({
+    resume,
+    message: "Resume successfully re-parsed with lossless profile model.",
   });
 }
 

@@ -7,3 +7,4 @@ export * from "./Artifact.js";
 export * from "./SearchRun.js";
 export * from "./LlmRun.js";
 export * from "./Preference.js";
+export * from "./Run.js";
