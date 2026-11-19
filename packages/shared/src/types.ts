@@ -72,6 +72,23 @@ export interface ApiErrorResponse {
 // Resume & Profile entity types
 export type ResumeStatus = "uploading" | "processing" | "ready" | "failed";
 
+export interface ProfileLink {
+  label: string;
+  url: string;
+}
+
+export interface SkillGroup {
+  label: string;
+  items: string[];
+}
+
+export interface ScholarshipAward {
+  name: string;
+  issuer?: string | null;
+  year?: string | null;
+  description?: string | null;
+}
+
 export interface OriginalFileRef {
   filename: string;
   storageKey: string;

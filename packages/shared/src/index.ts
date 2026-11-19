@@ -28,17 +28,20 @@ export type {
   OriginalFileRef,
   PreferenceLocation,
   PreferenceSalary,
+  ProfileLink,
   RegisterPayload,
   ResumeDetail,
   ResumeEntity,
   ResumeListItem,
   ResumeStatus,
   SalaryPeriod,
+  ScholarshipAward,
   ScoreBreakdown,
   SearchDiagnostics,
   SearchPreset,
   SearchProgressEvent,
   SearchRunEntity,
+  SkillGroup,
   SourceAvailabilityInfo,
   SourceStatusItem,
   UserPreferencesDocument,
@@ -47,16 +50,51 @@ export type {
   WorkMode,
 } from "./types.js";
 
+import type { ProfileLink, SkillGroup, ScholarshipAward } from "./types.js";
+
 export { PIPELINE_VERSION } from "./types.js";
 
 export type { components, paths };
 
-// Convenient direct schema type exports
-export type ParsedProfile = components["schemas"]["ParsedProfile"];
+type RawWorkExperience = components["schemas"]["WorkExperience"];
+type RawEducation = components["schemas"]["Education"];
+type RawProject = components["schemas"]["Project"];
+type RawParsedProfile = components["schemas"]["ParsedProfile"];
+
+// Lossless profile schema type definitions extending OpenAPI components
+export type WorkExperience = RawWorkExperience & {
+  location?: string | null;
+  is_current?: boolean | null;
+};
+
+export type Education = RawEducation & {
+  expected?: boolean | null;
+  gpa_scale?: string | null;
+  coursework?: string[];
+};
+
+export type Project = RawProject & {
+  context_line?: string | null;
+  start?: string | null;
+  end?: string | null;
+  year?: string | null;
+  tech_stack?: string[];
+  bullets?: string[];
+  links?: (string | ProfileLink)[];
+};
+
+export type ParsedProfile = Omit<RawParsedProfile, "links" | "experience" | "education" | "projects"> & {
+  headline?: string | null;
+  links?: (string | ProfileLink)[];
+  skill_groups?: SkillGroup[];
+  experience?: WorkExperience[];
+  education?: Education[];
+  projects?: Project[];
+  scholarships?: ScholarshipAward[];
+  [key: string]: unknown;
+};
+
 export type ProfileSkill = components["schemas"]["ProfileSkill"];
-export type WorkExperience = components["schemas"]["WorkExperience"];
-export type Education = components["schemas"]["Education"];
-export type Project = components["schemas"]["Project"];
 export type Certification = components["schemas"]["Certification"];
 export type LanguageProficiency = components["schemas"]["LanguageProficiency"];
 

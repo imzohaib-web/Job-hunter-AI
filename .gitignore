@@ -66,3 +66,7 @@ tests/local/
 *.pem
 .temp/
 tmp/
+
+# Local scratch & artifacts
+scratch/
+*.docx
